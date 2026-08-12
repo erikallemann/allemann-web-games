@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-12 — Family roster and mobile score ribbon
+
+- Added the editable family roster Erik, Hanna, Esther, Ingrid, Jon, Johanna, Bill, and Olle. Setups begin with Erik as Human and Hanna as CPU; additional seats use unused roster names as CPU players.
+- Remember the last lineup and Human/CPU choices independently from an unfinished game.
+- Replaced the horizontally scrolling mobile score cards with a compact sticky all-player ribbon and expandable detailed cards.
+- Condensed mobile CPU status, speed, and pause controls into one row.
+- Kept the detailed desktop scoreboard unchanged.
+
 ## Baseline — 2026-08-12
 
 First Git-preserved baseline of the live game at <https://allemann.se/10000/>.

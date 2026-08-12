@@ -18,6 +18,8 @@ test("static Swedish translations and variables are resolved", () => {
   assert.equal(t("sv", "probability.dice", { dice: 3 }), "med 3 tärningar");
   assert.equal(t("en", "player.human"), "Human");
   assert.equal(t("sv", "player.human"), "Människa");
+  assert.equal(t("sv", "scoreboard.details"), "Detaljer");
+  assert.match(t("sv", "setup.rosterHint"), /sparas på den här enheten/);
   assert.equal(t("sv", "cpu.status.playing", { player: "Bo" }), "Bo spelar sin CPU-tur");
   assert.equal(t("sv", "offer.kicker"), "Vill du ta chansen?");
   assert.equal(t("sv", "winner.detailsOne", { score: "1 000" }), "1 000 poäng · 1 omgång");

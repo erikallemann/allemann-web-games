@@ -9,17 +9,20 @@ A dependency-free, local multiplayer implementation of the dice game **10000**, 
 - `scoring.js` — pure scoring rules, precedence, and exact farkle probability.
 - `game.js` — game state machine: turns, break-in, passed dice, final round, and ties.
 - `cpu.js` — reusable CPU strategy interface, valid-selection enumeration, and the Balanced strategy.
+- `setup.js` — persistent family roster and remembered Human/CPU lineup helpers.
 - `i18n.js` — English/Swedish interface, event-log, scoring-feedback, and error translations.
 - `app.js` — rendering, human/CPU turn control, keyboard shortcuts, browser randomness, language switching, and local storage.
 - `tests/` — Node test suite for scoring and game-flow edge cases.
 - `package.json` — dependency-free test command.
 
-The deployment directory is `/home/erik/sites/10000`. The browser stores one unfinished game under the local-storage key `ten-thousand-game-v1`, plus the language and probability-display preferences; no game data is sent to the server.
+The source lives in this repository under `10000/`; the separate deployment directory is `/home/erik/sites/10000`. The browser stores one unfinished game under the local-storage key `ten-thousand-game-v1`, the remembered editable lineup under `ten-thousand-lineup-v1`, plus the language, probability-display, and CPU-speed preferences; no game data is sent to the server.
 
 ## Rules implemented
 
 - Two to six named local players, six dice, optional scoring selection, banking, farkles, and hot dice. Scoring all six forces another roll with all six before banking; a farkle on that roll loses the entire turn score. A farkled roll remains visibly marked on the table until the player explicitly passes play with **Next player**.
 - Every seat may be a Human or CPU player, including all-CPU games. CPU turns are animated and can be paused or run at normal, fast, or very-fast speed.
+- New setups begin with Erik as Human and Hanna as CPU. Additional seats use the next unused name from Erik, Hanna, Esther, Ingrid, Jon, Johanna, Bill, and Olle. Every name remains editable, and the last lineup and player types are remembered on that device independently of an unfinished game.
+- On mobile, every player total remains visible in a compact sticky score ribbon with no horizontal scrolling. A Details control expands the full break-in and CPU status cards; desktop retains the full scoreboard.
 - The initial **Balanced** CPU strategy evaluates every valid scoring subset, the farkle risk of remaining dice, break-in requirements, inherited continuations, score position, and final-round targets. CPU strategy decisions are isolated in `cpu.js` so additional strategies can be added without changing the game engine.
 - A persistent EN/SV toggle changes the complete interface and event log without interrupting the current game.
 - An optional, persistent probability switch shows the exact farkle risk for the number of dice currently available to roll. It uses the same scoring evaluator as the game, including six-dice special combinations.
@@ -47,6 +50,6 @@ The Caddy configuration adds host-and-path matchers for `allemann.se` and `www.a
 
 The pre-change configuration is backed up at `/home/erik/caddy_staging/Caddyfile.backup-20260720-before-10000`. The maintained staging file is `/home/erik/caddy_staging/Caddyfile`.
 
-To update the game, edit the files in `/home/erik/sites/10000`, bump the shared `v=` asset marker in `index.html`, `app.js`, `game.js`, and `cpu.js`, then run `npm test`. The asset marker keeps browsers from combining files from different releases; `tests/assets.test.js` verifies that every browser entry and module import uses the same marker. Reload Caddy only if its configuration itself changed. Static asset edits are served immediately.
+To update the game, edit this repository's `10000/` directory, bump the shared `v=` asset marker in every browser entry and module edge, then run the game and root test suites. The asset marker keeps browsers from combining files from different releases; `tests/assets.test.js` verifies that every browser entry and module import uses the same marker. Deploy a tested copy to `/home/erik/sites/10000` using the root deployment guide. Reload Caddy only if its configuration itself changed.
 
 To remove the game, remove the two 10000 matchers/handlers from the staging Caddyfile, validate and deploy it, reload Caddy, verify the existing landing page, and then remove `/home/erik/sites/10000` after confirming deletion. Record the operational change in `/home/erik/ops_log.md`.

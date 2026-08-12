@@ -17,7 +17,7 @@ test("browser assets use one coherent cache-busting release marker", async () =>
   };
   const expectedImports = {
     "index.html": ["styles.css", "app.js"],
-    "app.js": ["game.js", "cpu.js", "scoring.js", "i18n.js"],
+    "app.js": ["game.js", "cpu.js", "scoring.js", "setup.js", "i18n.js"],
     "game.js": ["scoring.js"],
     "cpu.js": ["scoring.js"],
   };

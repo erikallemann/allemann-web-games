@@ -1,4 +1,4 @@
-import { hasScoringOption, scoreSelection, specialCombination } from "./scoring.js?v=20260730-3";
+import { hasScoringOption, scoreSelection, specialCombination } from "./scoring.js?v=20260812-1";
 
 export const STORAGE_KEY = "ten-thousand-game-v1";
 export const GAME_VERSION = 1;

@@ -1,6 +1,13 @@
-import { GameEngine, STORAGE_KEY } from "./game.js?v=20260730-3";
-import { strategyForPlayer } from "./cpu.js?v=20260730-3";
-import { farkleProbability, specialCombination } from "./scoring.js?v=20260730-3";
+import { GameEngine, STORAGE_KEY } from "./game.js?v=20260812-1";
+import { strategyForPlayer } from "./cpu.js?v=20260812-1";
+import { farkleProbability, specialCombination } from "./scoring.js?v=20260812-1";
+import {
+  FAMILY_ROSTER,
+  LINEUP_KEY,
+  nextRosterPlayer,
+  normalizeLineup,
+  restoreLineup,
+} from "./setup.js?v=20260812-1";
 import {
   LANGUAGE_KEY,
   SUPPORTED_LANGUAGES,
@@ -9,7 +16,7 @@ import {
   translateEvent,
   translateRuntimeText,
   translateScoreLabel,
-} from "./i18n.js?v=20260730-3";
+} from "./i18n.js?v=20260812-1";
 
 const DICE_GLYPHS = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 const PROBABILITY_KEY = "ten-thousand-show-probability";
@@ -20,12 +27,13 @@ let language = SUPPORTED_LANGUAGES.includes(localStorage.getItem(LANGUAGE_KEY))
   ? localStorage.getItem(LANGUAGE_KEY)
   : "en";
 let engine = null;
-let setupPlayers = [newSetupPlayer(0), newSetupPlayer(1)];
+let setupPlayers = restoreLineup(localStorage.getItem(LINEUP_KEY), defaultPlayerName);
 let rolling = false;
 let messageTimer = null;
 let showProbability = localStorage.getItem(PROBABILITY_KEY) === "true";
 let cpuPaused = false;
 let cpuTimer = null;
+let scoreDetailsOpen = false;
 let cpuSpeed = Object.hasOwn(CPU_DELAYS, localStorage.getItem(CPU_SPEED_KEY))
   ? localStorage.getItem(CPU_SPEED_KEY)
   : "normal";
@@ -49,16 +57,17 @@ function defaultPlayerName(index) {
   return t(language, "player.default", { number: index + 1 });
 }
 
-function newSetupPlayer(index, type = "human") {
-  return { name: defaultPlayerName(index), type };
-}
-
 function captureSetupPlayers() {
-  return [...$("#name-list").querySelectorAll(".name-row")].map((row, index) => ({
+  return [...$("#name-list").querySelectorAll(".name-row")].map((row) => ({
     name: row.querySelector("input").value,
     type: row.querySelector("[data-player-type]").value === "cpu" ? "cpu" : "human",
-    index,
   }));
+}
+
+function rememberLineup(entries = captureSetupPlayers()) {
+  setupPlayers = normalizeLineup(entries, defaultPlayerName);
+  localStorage.setItem(LINEUP_KEY, JSON.stringify(setupPlayers));
+  return setupPlayers;
 }
 
 function isCpuTurn() {
@@ -120,12 +129,13 @@ function renderSetup() {
   $("#setup-view").hidden = false;
   $("#game-view").hidden = true;
   $("#new-game").hidden = !engine;
+  $("#family-roster").innerHTML = FAMILY_ROSTER.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
   const list = $("#name-list");
   list.innerHTML = setupPlayers.map((setupPlayer, index) => `
     <div class="name-row">
       <span class="name-index">${index + 1}</span>
       <div class="player-fields">
-        <input name="player-${index}" value="${escapeHtml(setupPlayer.name)}" maxlength="24" autocomplete="off" aria-label="${escapeHtml(tr("player.nameLabel", { number: index + 1 }))}">
+        <input name="player-${index}" value="${escapeHtml(setupPlayer.name)}" maxlength="24" autocomplete="off" list="family-roster" aria-label="${escapeHtml(tr("player.nameLabel", { number: index + 1 }))}">
         <select class="player-type-select" data-player-type="${index}" aria-label="${escapeHtml(tr("player.typeLabel", { number: index + 1 }))}">
           <option value="human" ${setupPlayer.type === "human" ? "selected" : ""}>${tr("player.human")}</option>
           <option value="cpu" ${setupPlayer.type === "cpu" ? "selected" : ""}>${tr("player.cpu")}</option>
@@ -167,6 +177,46 @@ function renderCpuToolbar() {
   }
 }
 
+function roundText(state) {
+  if (state.finalRound?.mode === "tiebreak") return tr("round.tie");
+  if (state.finalRound) return tr("round.final");
+  return tr("round.normal", { number: Math.min(...state.players.map((item) => item.turns)) + 1 });
+}
+
+function renderScoreboard(state) {
+  const isActive = (index) => index === state.currentPlayer && state.phase !== "game-over";
+  const cards = state.players.map((item, index) => `
+    <article class="player-card ${isActive(index) ? "current" : ""}" ${isActive(index) ? 'aria-current="true"' : ""}>
+      <span class="player-name">${escapeHtml(item.name)}</span>
+      <strong class="score">${formatScore(item.score)}</strong>
+      <span class="player-meta">
+        <span class="break-badge ${item.brokenIn ? "in" : ""}">${item.brokenIn ? tr("status.in") : tr("status.needs")}</span>
+        ${item.type === "cpu" ? `<span class="cpu-badge">${tr("player.cpu")}</span>` : ""}
+      </span>
+    </article>`).join("");
+  $("#scoreboard").innerHTML = cards;
+
+  const ribbon = $("#score-ribbon");
+  ribbon.className = `score-ribbon score-count-${state.players.length}`;
+  ribbon.innerHTML = state.players.map((item, index) => {
+    const status = item.brokenIn ? tr("status.in") : tr("status.needs");
+    const type = item.type === "cpu" ? `, ${tr("player.cpu")}` : "";
+    return `<div class="score-chip ${isActive(index) ? "current" : ""} ${item.brokenIn ? "in" : "needs"}" role="listitem" ${isActive(index) ? 'aria-current="true"' : ""} aria-label="${escapeHtml(`${item.name}, ${formatScore(item.score)}, ${status}${type}`)}">
+      <span class="score-chip-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+      <strong>${formatScore(item.score)}</strong>
+      <span class="score-chip-state" aria-hidden="true">${item.brokenIn ? "✓" : "○"}</span>
+    </div>`;
+  }).join("");
+
+  const currentRound = roundText(state);
+  $("#round-label").textContent = currentRound;
+  $("#mobile-round-label").textContent = currentRound;
+  const toggle = $("#scoreboard-toggle");
+  toggle.setAttribute("aria-expanded", String(scoreDetailsOpen));
+  toggle.textContent = tr(scoreDetailsOpen ? "scoreboard.close" : "scoreboard.details");
+  $("#score-section").classList.toggle("details-open", scoreDetailsOpen);
+}
+
 function renderGame() {
   if (!engine) return renderSetup();
   const state = engine.state;
@@ -176,16 +226,7 @@ function renderGame() {
   $("#game-view").hidden = false;
   $("#new-game").hidden = false;
   renderCpuToolbar();
-
-  $("#scoreboard").innerHTML = state.players.map((item, index) => `
-    <article class="player-card ${index === state.currentPlayer && state.phase !== "game-over" ? "current" : ""}" ${index === state.currentPlayer ? 'aria-current="true"' : ""}>
-      <span class="player-name">${escapeHtml(item.name)}</span>
-      <strong class="score">${formatScore(item.score)}</strong>
-      <span class="player-meta">
-        <span class="break-badge ${item.brokenIn ? "in" : ""}">${item.brokenIn ? tr("status.in") : tr("status.needs")}</span>
-        ${item.type === "cpu" ? `<span class="cpu-badge">${tr("player.cpu")}</span>` : ""}
-      </span>
-    </article>`).join("");
+  renderScoreboard(state);
 
   const finalBanner = $("#final-banner");
   if (state.finalRound?.mode === "final") {
@@ -198,12 +239,6 @@ function renderGame() {
   } else {
     finalBanner.hidden = true;
   }
-  $("#round-label").textContent = state.finalRound?.mode === "tiebreak"
-    ? tr("round.tie")
-    : state.finalRound
-      ? tr("round.final")
-      : tr("round.normal", { number: Math.min(...state.players.map((item) => item.turns)) + 1 });
-
   $("#turn-title").textContent = player.name;
   $("#turn-eyebrow").textContent = turn?.inherited
     ? tr("inheritedTurn")
@@ -397,7 +432,8 @@ function confirmReset() {
   if (!engine || window.confirm(tr("reset.confirm"))) {
     engine = null;
     cpuPaused = false;
-    setupPlayers = [newSetupPlayer(0), newSetupPlayer(1)];
+    scoreDetailsOpen = false;
+    setupPlayers = restoreLineup(localStorage.getItem(LINEUP_KEY), defaultPlayerName);
     save();
     renderSetup();
   }
@@ -405,10 +441,7 @@ function confirmReset() {
 
 $("#setup-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  setupPlayers = captureSetupPlayers().map((setupPlayer, index) => ({
-    name: setupPlayer.name.trim() || defaultPlayerName(index),
-    type: setupPlayer.type,
-  }));
+  rememberLineup();
   cpuPaused = false;
   engine = GameEngine.create(setupPlayers);
   save();
@@ -416,8 +449,9 @@ $("#setup-form").addEventListener("submit", (event) => {
 });
 
 $("#add-player").addEventListener("click", () => {
-  setupPlayers = captureSetupPlayers().map(({ name, type }) => ({ name, type }));
-  if (setupPlayers.length < 6) setupPlayers.push(newSetupPlayer(setupPlayers.length));
+  rememberLineup();
+  if (setupPlayers.length < 6) setupPlayers.push(nextRosterPlayer(setupPlayers));
+  rememberLineup(setupPlayers);
   renderSetup();
   $("#name-list input:last-of-type")?.focus();
 });
@@ -425,10 +459,13 @@ $("#add-player").addEventListener("click", () => {
 $("#name-list").addEventListener("click", (event) => {
   const button = event.target.closest("[data-remove]");
   if (!button || setupPlayers.length <= 2) return;
-  setupPlayers = captureSetupPlayers().map(({ name, type }) => ({ name, type }));
+  rememberLineup();
   setupPlayers.splice(Number(button.dataset.remove), 1);
+  rememberLineup(setupPlayers);
   renderSetup();
 });
+
+$("#name-list").addEventListener("change", () => rememberLineup());
 
 $("#dice-stage").addEventListener("click", (event) => {
   const die = event.target.closest("[data-die]");
@@ -448,6 +485,10 @@ $("#special-button").addEventListener("click", () => perform(() => engine.select
 $("#inherit-button").addEventListener("click", () => perform(() => engine.inheritOffer()));
 $("#fresh-button").addEventListener("click", () => perform(() => engine.startFresh()));
 $("#new-game").addEventListener("click", confirmReset);
+$("#scoreboard-toggle").addEventListener("click", () => {
+  scoreDetailsOpen = !scoreDetailsOpen;
+  renderScoreboard(engine.state);
+});
 $("#cpu-pause").addEventListener("click", () => {
   cpuPaused = !cpuPaused;
   renderGame();
@@ -477,6 +518,7 @@ $("#language-toggle").addEventListener("click", () => {
   }
   language = language === "en" ? "sv" : "en";
   localStorage.setItem(LANGUAGE_KEY, language);
+  if (!engine) rememberLineup(setupPlayers);
   applyStaticTranslations();
   if (engine) renderGame(); else renderSetup();
 });
@@ -502,6 +544,9 @@ try {
     engine = GameEngine.restore(saved, { fallbackPlayerName: defaultPlayerName });
     const migrated = engine.serialize();
     if (migrated !== saved) localStorage.setItem(STORAGE_KEY, migrated);
+    if (!localStorage.getItem(LINEUP_KEY)) {
+      rememberLineup(engine.state.players.map(({ name, type }) => ({ name, type })));
+    }
   }
 } catch (error) {
   console.warn("Could not restore saved game", error);
