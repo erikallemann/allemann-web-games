@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173c35">
+  <meta name="description" content="A local multiplayer browser version of the dice game 10000.">
+  <title>10000 — Dice Game</title>
+  <link rel="stylesheet" href="./styles.css?v=20260730-3">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="10000 game home" data-i18n-aria="brand.home">
+      <span class="brand-mark" aria-hidden="true">⚄</span>
+      <span><strong>10000</strong><small data-i18n="brand.tagline">push your luck</small></span>
+    </a>
+    <div class="header-actions">
+      <span class="save-status" id="save-status" title="Games are saved in this browser" data-i18n="save.text" data-i18n-title="save.title">Saved locally</span>
+      <button class="button button-quiet language-toggle" id="language-toggle" type="button" aria-label="Byt till svenska">SV</button>
+      <button class="button button-quiet" id="new-game" type="button" data-i18n="newGame">New game</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="setup-shell" id="setup-view" aria-labelledby="setup-title">
+      <div class="setup-copy">
+        <h1 id="setup-title" data-i18n-html="setup.title"><span class="setup-title-copy">Race to</span><span class="setup-title-score">10,000</span></h1>
+        <p data-i18n="setup.copy">Keep scoring dice, roll what remains, and bank before you farkle. Add 2–6 players to begin.</p>
+      </div>
+      <form class="setup-card" id="setup-form">
+        <div class="section-heading">
+          <div><p class="kicker" data-i18n="players">Players</p><h2 data-i18n="setup.who">Who’s playing?</h2></div>
+          <span class="player-count" id="player-count">2 / 6</span>
+        </div>
+        <div class="name-list" id="name-list"></div>
+        <div class="setup-actions">
+          <button class="button button-secondary" id="add-player" type="button">+ <span data-i18n="setup.add">Add player</span></button>
+          <button class="button button-primary" type="submit"><span data-i18n="setup.start">Start game</span> <span aria-hidden="true">→</span></button>
+        </div>
+      </form>
+    </section>
+
+    <div id="game-view" hidden>
+      <div class="final-banner" id="final-banner" hidden></div>
+      <section class="cpu-toolbar" id="cpu-toolbar" aria-label="CPU controls" data-i18n-aria="cpu.controls" hidden>
+        <div>
+          <p class="kicker" data-i18n="cpu.controls">CPU controls</p>
+          <strong id="cpu-status" aria-live="polite"></strong>
+        </div>
+        <div class="cpu-actions">
+          <label for="cpu-speed"><span data-i18n="cpu.speed">Speed</span>
+            <select id="cpu-speed">
+              <option value="normal" data-i18n="cpu.speed.normal">Normal</option>
+              <option value="fast" data-i18n="cpu.speed.fast">Fast</option>
+              <option value="instant" data-i18n="cpu.speed.instant">Very fast</option>
+            </select>
+          </label>
+          <button class="button button-secondary" id="cpu-pause" type="button"></button>
+        </div>
+      </section>
+
+      <section class="score-section" aria-labelledby="score-title">
+        <div class="section-heading compact">
+          <div><p class="kicker" data-i18n="scoreboard">Scoreboard</p><h1 id="score-title" data-i18n="scoreboard.title">First to 10,000</h1></div>
+          <span class="round-label" id="round-label"></span>
+        </div>
+        <div class="scoreboard" id="scoreboard"></div>
+      </section>
+
+      <div class="game-grid">
+        <section class="turn-card" id="turn-card" aria-labelledby="turn-title">
+          <div class="turn-heading">
+            <div>
+              <p class="eyebrow" id="turn-eyebrow" data-i18n="currentPlayer">Current player</p>
+              <h2 id="turn-title">Player</h2>
+            </div>
+            <div class="turn-score"><span data-i18n="turnScore">Turn score</span><strong id="turn-score">0</strong></div>
+          </div>
+
+          <div class="offer-card" id="offer-card" hidden>
+            <div class="offer-icon" aria-hidden="true">↗</div>
+            <div>
+              <p class="kicker" data-i18n="offer.kicker">Continuation offered</p>
+              <h3 id="offer-title"></h3>
+              <p id="offer-copy"></p>
+              <div class="offer-actions">
+                <button class="button button-primary" id="inherit-button" type="button" data-i18n="offer.take">Take the risk</button>
+                <button class="button button-secondary" id="fresh-button" type="button" data-i18n="offer.fresh">Start fresh</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="play-area">
+            <div class="turn-stats" aria-label="Current turn details" data-i18n-aria="turn.details">
+              <div><span data-i18n="dice.remaining">Dice remaining</span><strong id="dice-remaining">6</strong></div>
+              <div><span data-i18n="bankedTotal">Banked total</span><strong id="player-total">0</strong></div>
+              <div><span data-i18n="status">Status</span><strong id="break-in-status" data-i18n="status.needs">Needs 1,000</strong></div>
+            </div>
+
+            <div class="probability-tools">
+              <label class="switch-label" for="probability-toggle">
+                <input id="probability-toggle" type="checkbox" role="switch" aria-label="Show farkle probability" data-i18n-aria="probability.toggle">
+                <span class="switch-track" aria-hidden="true"></span>
+                <span data-i18n="probability.toggle">Show farkle probability</span>
+              </label>
+              <p class="probability-result" id="probability-result" aria-live="polite" hidden>
+                <span data-i18n="probability.risk">Farkle risk</span>
+                <strong id="probability-value"></strong>
+                <small id="probability-dice"></small>
+              </p>
+            </div>
+
+            <div class="dice-legend" aria-label="Dice state legend" data-i18n-aria="dice.legend">
+              <span><i class="legend-dot available"></i><span data-i18n="dice.available">Available</span></span>
+              <span><i class="legend-dot selected"></i><span data-i18n="dice.selected">Selected</span></span>
+              <span><i class="legend-dot held"></i><span data-i18n="dice.scored">Scored</span></span>
+              <span><i class="legend-dot reroll"></i><span data-i18n="dice.reroll">To reroll</span></span>
+            </div>
+
+            <div class="dice-stage" id="dice-stage" role="group" aria-label="Dice" data-i18n-aria="dice.group"></div>
+            <button class="combo-callout" id="special-button" type="button" hidden></button>
+
+            <div class="selection-feedback" id="selection-feedback" aria-live="polite">
+              <strong data-i18n="feedback.ready">Ready to roll</strong><span data-i18n="feedback.rollSix">Roll all six dice to begin.</span>
+            </div>
+
+            <div class="controls" aria-label="Turn actions" data-i18n-aria="controls.label">
+              <button class="button button-roll" id="roll-button" type="button"><span aria-hidden="true">⚄</span> <span data-i18n="controls.roll">Roll</span> <kbd>R</kbd></button>
+              <button class="button button-primary" id="confirm-button" type="button"><span data-i18n="controls.keep">Keep dice</span> <kbd>Enter</kbd></button>
+              <button class="button button-secondary" id="undo-button" type="button"><span data-i18n="controls.undo">Undo selection</span> <kbd>Esc</kbd></button>
+              <button class="button button-bank" id="bank-button" type="button"><span data-i18n="controls.bank">Bank points</span> <kbd>B</kbd></button>
+              <button class="button button-next" id="next-player-button" type="button"><span data-i18n="controls.next">Next player</span> <span aria-hidden="true">→</span> <kbd>N</kbd></button>
+            </div>
+          </div>
+
+          <div class="winner-card" id="winner-card" hidden></div>
+          <p class="message" id="message" aria-live="assertive"></p>
+        </section>
+
+        <aside class="side-stack">
+          <section class="log-card" aria-labelledby="log-title">
+            <div class="section-heading compact"><div><p class="kicker" data-i18n="log.kicker">Table talk</p><h2 id="log-title" data-i18n="log.title">Recent events</h2></div></div>
+            <ol class="event-log" id="event-log"></ol>
+          </section>
+
+          <details class="rules-card" open>
+            <summary><span><span class="kicker" data-i18n="rules.reference">Reference</span><span data-i18n="rules.title">Rules & scoring</span></span><span aria-hidden="true">＋</span></summary>
+            <div class="rules-content">
+              <p data-i18n-html="rules.turn"><strong>On your turn:</strong> roll, select a complete scoring die or group, and keep it. Bank after a successful keep or risk the remaining dice. No score on a roll is a farkle: all turn points are lost; review the failed dice, then pass play to the next player.</p>
+              <p data-i18n-html="rules.breakIn"><strong>Break in:</strong> your first bank must be at least 1,000 points in one turn. Once in, any scored turn may be banked.</p>
+              <p data-i18n-html="rules.hot"><strong>Hot dice:</strong> after scoring all six, you must roll all six again before banking. A farkle on that roll loses the entire turn score.</p>
+              <p data-i18n-html="rules.passed"><strong>Passed dice:</strong> a continuation is offered when the banking player is in the game—including when that bank completes their break-in—and the next player had already broken in. The next player may start fresh or inherit the turn score and remaining dice, but must add a score before banking.</p>
+              <div class="rule-table-wrap">
+                <table>
+                  <caption data-i18n="rules.kindScores">Of-a-kind scores</caption>
+                  <thead><tr><th data-i18n="rules.face">Face</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>
+                  <tbody>
+                    <tr><th data-i18n="rules.ones">1s</th><td data-score="1000">1,000</td><td data-score="2000">2,000</td><td data-score="4000">4,000</td><td data-score="8000">8,000</td></tr>
+                    <tr><th data-i18n="rules.twos">2s</th><td data-score="200">200</td><td data-score="400">400</td><td data-score="800">800</td><td data-score="1600">1,600</td></tr>
+                    <tr><th data-i18n="rules.threes">3s</th><td data-score="300">300</td><td data-score="600">600</td><td data-score="1200">1,200</td><td data-score="2400">2,400</td></tr>
+                    <tr><th data-i18n="rules.fours">4s</th><td data-score="400">400</td><td data-score="800">800</td><td data-score="1600">1,600</td><td data-score="3200">3,200</td></tr>
+                    <tr><th data-i18n="rules.fives">5s</th><td data-score="500">500</td><td data-score="1000">1,000</td><td data-score="2000">2,000</td><td data-score="4000">4,000</td></tr>
+                    <tr><th data-i18n="rules.sixes">6s</th><td data-score="600">600</td><td data-score="1200">1,200</td><td data-score="2400">2,400</td><td data-score="4800">4,800</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <ul class="quick-scores">
+                <li><strong data-i18n="score.single1">Single 1</strong><span data-score="100">100</span></li>
+                <li><strong data-i18n="score.single5">Single 5</strong><span data-score="50">50</span></li>
+                <li><strong data-i18n="score.straight">Straight</strong><span data-score="1500">1,500</span></li>
+                <li><strong data-i18n="score.threePairs">Three pairs</strong><span data-score="1500">1,500</span></li>
+                <li><strong data-i18n="score.twoTriples">Two triples</strong><span data-score="1500">1,500</span></li>
+              </ul>
+              <p class="rules-note" data-i18n="rules.note">Special combinations use the entire six-die roll. First to 10,000 starts the equal-turn final round; tied leaders continue until one winner remains.</p>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <footer data-i18n="footer">10000 · Local multiplayer · No data leaves your browser</footer>
+  <script type="module" src="./app.js?v=20260730-3"></script>
+</body>
+</html>

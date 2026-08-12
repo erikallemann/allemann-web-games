@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173c35">
+  <meta name="description" content="Spela det svenska kortspelet Chicago mot datorn.">
+  <title>Chicago — kortspel</title>
+  <link rel="stylesheet" href="./styles.css?v=20260730-2">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Chicago startsida">
+      <span class="brand-mark" aria-hidden="true">♠</span>
+      <span><strong>Chicago</strong><small>kortspel</small></span>
+    </a>
+    <div class="header-actions">
+      <span class="save-status" id="save-status">Sparas lokalt</span>
+      <button class="button button-quiet" id="restart-game" type="button" hidden>Starta om</button>
+      <button class="button button-quiet" id="new-game" type="button">Nytt spel</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="setup-shell" id="setup-view" aria-labelledby="setup-title">
+      <div class="setup-copy">
+        <p class="kicker">Poker · stick · taktik</p>
+        <h1 id="setup-title">Chicago</h1>
+        <p>Bygg pokerhänder, ta det sista sticket och nå 52 poäng. Eller anropa Chicago och försök vinna alla fem stick.</p>
+      </div>
+      <form class="setup-card" id="setup-form">
+        <div class="section-heading">
+          <div><p class="kicker">Nytt parti</p><h2>Vilka spelar?</h2></div>
+          <span class="player-count">1 människa</span>
+        </div>
+        <label class="field">
+          <span>Ditt namn</span>
+          <input id="human-name" maxlength="24" value="Du" autocomplete="name" required>
+        </label>
+        <fieldset class="player-choice">
+          <legend>Antal spelare</legend>
+          <div class="segmented">
+            <label><input type="radio" name="player-count" value="2" checked><span>2</span></label>
+            <label><input type="radio" name="player-count" value="3"><span>3</span></label>
+            <label><input type="radio" name="player-count" value="4"><span>4</span></label>
+          </div>
+          <p id="opponent-copy">Du möter 1 CPU-spelare.</p>
+        </fieldset>
+        <button class="button button-primary setup-start" type="submit">Starta spelet <span aria-hidden="true">→</span></button>
+      </form>
+    </section>
+
+    <div id="game-view" hidden>
+      <section class="game-toolbar" aria-label="Spelinställningar">
+        <div>
+          <p class="kicker">Pågående parti</p>
+          <strong id="phase-label"></strong>
+        </div>
+        <div class="speed-controls">
+          <label for="cpu-speed">CPU-tempo
+            <select id="cpu-speed">
+              <option value="normal">Normalt</option>
+              <option value="fast">Snabbt</option>
+              <option value="instant">Utan pauser</option>
+            </select>
+          </label>
+          <button class="button button-secondary" id="cpu-pause" type="button">Pausa CPU</button>
+        </div>
+      </section>
+
+      <section class="score-section" aria-labelledby="score-title">
+        <div class="section-heading compact">
+          <div><p class="kicker">Poängtavla</p><h1 id="score-title">Först till 52 och sista sticket</h1></div>
+          <span class="round-label" id="round-label"></span>
+        </div>
+        <div class="scoreboard" id="scoreboard"></div>
+      </section>
+
+      <div class="game-grid">
+        <section class="table-card" aria-labelledby="turn-title">
+          <div class="turn-heading">
+            <div>
+              <p class="eyebrow" id="turn-eyebrow">På tur</p>
+              <h2 id="turn-title"></h2>
+            </div>
+            <div class="deck-status"><span>Kort kvar</span><strong id="deck-count">32</strong></div>
+          </div>
+
+          <div class="announcement" id="announcement" aria-live="polite"></div>
+          <div class="opponents" id="opponents" aria-label="Motspelarnas händer"></div>
+
+          <section class="reveal-panel" id="reveal-panel" aria-labelledby="reveal-title" hidden>
+            <div class="section-heading compact">
+              <div><p class="kicker">Pokeranrop</p><h3 id="reveal-title">Bästa hand</h3></div>
+            </div>
+            <div class="revealed-hands" id="revealed-hands"></div>
+          </section>
+
+          <section class="trick-stage" id="trick-stage" aria-labelledby="trick-title" hidden>
+            <div class="section-heading compact">
+              <div><p class="kicker" id="trick-kicker">Stickspel</p><h3 id="trick-title">Stick 1 av 5</h3></div>
+              <span class="leader-label" id="leader-label"></span>
+            </div>
+            <div class="trick-cards" id="trick-cards"></div>
+          </section>
+
+          <section class="hand-area" aria-labelledby="hand-title">
+            <div class="hand-heading">
+              <div><p class="kicker">Din hand</p><h3 id="hand-title">Välj kort</h3></div>
+              <span id="selection-count"></span>
+            </div>
+            <div class="hand" id="human-hand" role="group" aria-label="Dina kort"></div>
+          </section>
+
+          <div class="action-panel" id="action-panel"></div>
+          <p class="message" id="message" aria-live="assertive"></p>
+
+          <section class="round-summary" id="round-summary" hidden>
+            <p class="kicker">Omgång klar</p>
+            <h3 id="summary-title"></h3>
+            <div class="summary-hands" id="summary-hands"></div>
+            <button class="button button-primary" id="next-round" type="button">Nästa omgång</button>
+          </section>
+
+          <section class="winner-card" id="winner-card" hidden></section>
+        </section>
+
+        <aside class="side-stack">
+          <section class="log-card" aria-labelledby="log-title">
+            <div class="section-heading compact"><div><p class="kicker">Vid bordet</p><h2 id="log-title">Senaste händelser</h2></div></div>
+            <ol class="event-log" id="event-log"></ol>
+          </section>
+
+          <details class="rules-card">
+            <summary><span><span class="kicker">Snabbreferens</span><span>Regler och poäng</span></span><span aria-hidden="true">＋</span></summary>
+            <div class="rules-content">
+              <p><strong>Omgång:</strong> fem kort, eventuell låg omgiv, tre byten och fem stick. Chicago kan anropas i stället för det första bytet. Bästa pokerhand ger poäng efter första bytet och efter sista sticket.</p>
+              <p><strong>Pokeranrop:</strong> spelarna beskriver sina händer i turordning utan att visa alla kort. Spelet avgör jämförelsen enligt vanliga pokerregler.</p>
+              <p><strong>Stick:</strong> följ utspelsfärgen om du kan. Saknar du färgen spelas kortet dolt och kan inte vinna. Bara femte sticket ger 5 poäng.</p>
+              <p><strong>Vinst:</strong> du måste ha minst 52 poäng och ta femte sticket. En lyckad Chicago — alla fem stick efter ett anrop vid minst 15 poäng — vinner direkt. Ett misslyckande nollställer poängen.</p>
+              <ul class="score-list">
+                <li><span>Ett par</span><strong>1</strong></li>
+                <li><span>Två par</span><strong>2</strong></li>
+                <li><span>Triss</span><strong>3</strong></li>
+                <li><span>Stege</span><strong>4</strong></li>
+                <li><span>Färg</span><strong>5</strong></li>
+                <li><span>Kåk</span><strong>6</strong></li>
+                <li><span>Fyrtal</span><strong>7</strong></li>
+                <li><span>Färgstege</span><strong>8</strong></li>
+                <li><span>Royal flush</span><strong>vinst</strong></li>
+              </ul>
+              <p class="rules-note">Exakt lika bästa pokerhänder ger inga poäng. Färg används aldrig som skiljekriterium. Ess kan vara högt eller lågt i A–2–3–4–5.</p>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <footer>Chicago · En spelare mot CPU · Ingen speldata lämnar webbläsaren</footer>
+  <script type="module" src="./app.js?v=20260730-2"></script>
+</body>
+</html>

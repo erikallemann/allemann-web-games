@@ -1,0 +1,10 @@
+{
+  "name": "allemann-web-games",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "npm run test:10000 && npm run test:chicago",
+    "test:10000": "npm --prefix 10000 test",
+    "test:chicago": "npm --prefix chicago test"
+  }
+}
