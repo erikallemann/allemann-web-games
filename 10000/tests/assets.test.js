@@ -36,4 +36,6 @@ test("browser assets use one coherent cache-busting release marker", async () =>
   }
 
   assert.equal(versions.size, 1, "all browser assets must use the same release marker");
+  assert.match(files["index.html"], /id="release-version"/);
+  assert.match(files["app.js"], /new URL\(import\.meta\.url\)\.searchParams\.get\("v"\)/);
 });

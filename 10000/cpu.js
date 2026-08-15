@@ -1,4 +1,4 @@
-import { farkleProbability, scoreSelection } from "./scoring.js?v=20260812-1";
+import { farkleProbability, scoreSelection } from "./scoring.js?v=20260815-1";
 
 export function scoringSelections(roll) {
   if (!Array.isArray(roll) || roll.length === 0 || roll.length > 6) return [];
