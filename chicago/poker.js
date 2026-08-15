@@ -119,6 +119,56 @@ function heightWord(rank, plural = false) {
   return plural ? "höga" : "högt";
 }
 
+const SINGULAR_RANK_NAMES = {
+  2: "tvåa",
+  3: "trea",
+  4: "fyra",
+  5: "femma",
+  6: "sexa",
+  7: "sjua",
+  8: "åtta",
+  9: "nia",
+  10: "tia",
+  11: "knekt",
+  12: "dam",
+  13: "kung",
+  14: "ess",
+};
+
+const PLURAL_RANK_NAMES = {
+  2: "tvåor",
+  3: "treor",
+  4: "fyror",
+  5: "femmor",
+  6: "sexor",
+  7: "sjuor",
+  8: "åttor",
+  9: "nior",
+  10: "tior",
+  11: "knektar",
+  12: "damer",
+  13: "kungar",
+  14: "ess",
+};
+
+export function describePokerHand(evaluation) {
+  const singular = (rank) => SINGULAR_RANK_NAMES[rank] || String(rank);
+  const plural = (rank) => PLURAL_RANK_NAMES[rank] || String(rank);
+  switch (evaluation.category) {
+    case 0: return `Högt kort, ${singular(evaluation.tie[0])}`;
+    case 1: return `Ett par, ${plural(evaluation.tie[0])}`;
+    case 2: return `Två par, ${plural(evaluation.tie[0])} över ${plural(evaluation.tie[1])}`;
+    case 3: return `Triss, ${plural(evaluation.tie[0])}`;
+    case 4: return `Stege till ${singular(evaluation.tie[0])}`;
+    case 5: return `Färg med ${singular(evaluation.tie[0])} högst`;
+    case 6: return `Kåk, ${plural(evaluation.tie[0])} över ${plural(evaluation.tie[1])}`;
+    case 7: return `Fyrtal, ${plural(evaluation.tie[0])}`;
+    case 8: return `Färgstege till ${singular(evaluation.tie[0])}`;
+    case 9: return "Royal flush";
+    default: return evaluation.name;
+  }
+}
+
 export function describePokerCall(evaluation) {
   switch (evaluation.category) {
     case 0: return "Inget";

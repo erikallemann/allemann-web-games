@@ -1,25 +1,28 @@
-import { cardLabel, RANK_LABELS, SUIT_SYMBOLS } from "./cards.js?v=20260730-2";
+import { cardLabel, RANK_LABELS, SUIT_SYMBOLS } from "./cards.js?v=20260815-2";
 import {
   canDeclareChicago,
   canLowRedeal,
   createGame,
   decideChicago,
   decideLowRedeal,
+  decideOpenCard,
   exchangeCards,
   nextRound,
   playCard,
   restartGame,
   restoreGame,
-} from "./game.js?v=20260730-2";
-import { legalCardIndexes } from "./rules.js?v=20260730-2";
+} from "./game.js?v=20260815-2";
+import { legalCardIndexes } from "./rules.js?v=20260815-2";
+import { describePokerHand } from "./poker.js?v=20260815-2";
 import {
   cpuAcceptLowRedeal,
   cpuChooseCard,
   cpuDeclareChicago,
   cpuExchangeIndexes,
-} from "./cpu.js?v=20260730-2";
+} from "./cpu.js?v=20260815-2";
 
-const SAVE_KEY = "chicago-game-v2";
+const SAVE_KEY = "chicago-game-v3";
+const LEGACY_SAVE_KEY = "chicago-game-v2";
 const SPEED_KEY = "chicago-cpu-speed-v1";
 const CPU_NAMES = ["Astrid", "Bosse", "Clara"];
 const PHASE_LABELS = {
@@ -75,6 +78,8 @@ const elements = {
   roundSummary: byId("round-summary"),
   summaryTitle: byId("summary-title"),
   summaryHands: byId("summary-hands"),
+  summaryTricks: byId("summary-tricks"),
+  summaryTrickList: byId("summary-trick-list"),
   nextRound: byId("next-round"),
   winnerCard: byId("winner-card"),
   eventLog: byId("event-log"),
@@ -82,9 +87,16 @@ const elements = {
 
 function loadGame() {
   try {
-    return restoreGame(JSON.parse(localStorage.getItem(SAVE_KEY)));
+    const current = localStorage.getItem(SAVE_KEY);
+    const restored = restoreGame(JSON.parse(current || localStorage.getItem(LEGACY_SAVE_KEY)));
+    if (restored && !current) {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(restored));
+      localStorage.removeItem(LEGACY_SAVE_KEY);
+    }
+    return restored;
   } catch {
     localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(LEGACY_SAVE_KEY);
     return null;
   }
 }
@@ -186,7 +198,7 @@ function renderPokerReveal() {
   elements.revealPanel.hidden = !visible;
   if (!visible) return;
   elements.revealTitle.textContent = result.tied
-    ? `${result.bestName} — lika anrop`
+    ? `${result.bestName} — lika utrop`
     : `${state.players[result.winners[0]].name} har bäst hand`;
   elements.revealedHands.replaceChildren();
   result.calls.forEach((call) => {
@@ -240,7 +252,8 @@ function renderHumanHand() {
     const button = cardElement(card, {
       button: true,
       selected: selected.has(cardIndex),
-      disabled: !interactive || index !== state.actor || (!exchangePhase && !trickPhase) || !isLegal,
+      disabled: !interactive || index !== state.actor || (!exchangePhase && !trickPhase) ||
+        (exchangePhase && Boolean(state.openCardOffer)) || !isLegal,
     });
     if (!isLegal) {
       button.title = "Du måste följa färg.";
@@ -252,18 +265,17 @@ function renderHumanHand() {
         selected.add(cardIndex);
       } else if (selected.has(cardIndex)) {
         selected.delete(cardIndex);
-      } else if (selected.size < state.deck.length) {
-        selected.add(cardIndex);
       } else {
-        message = `Bara ${state.deck.length} kort återstår i leken.`;
+        selected.add(cardIndex);
       }
       render();
     });
     elements.humanHand.append(button);
   });
-  elements.selectionCount.textContent = selected.size ? `${selected.size} valda` : "";
+  elements.selectionCount.textContent = exchangePhase && selected.size ? `${selected.size} behålls` : "";
   elements.handTitle.textContent = trickPhase ? "Välj ett kort att spela" :
-    exchangePhase ? "Välj kort att byta" : "Dina fem kort";
+    state.openCardOffer ? "Din hand utan ersättningskortet" :
+    exchangePhase ? "Välj kort att behålla" : "Dina fem kort";
 }
 
 function renderAnnouncement() {
@@ -278,6 +290,8 @@ function renderAnnouncement() {
     chicago = true;
   } else if (state.chicago?.failed) {
     text = `${state.players[state.chicago.stoppedBy].name} stoppade Chicago. Deklarantens poäng nollställdes.`;
+  } else if (state.openCardOffer) {
+    text = `${state.players[state.openCardOffer.playerIndex].name} väljer om ${cardLabel(state.openCardOffer.card)} ska behållas.`;
   } else if (state.lastOpenCard) {
     text = `${state.players[state.lastOpenCard.playerIndex].name} fick öppna kortet ${cardLabel(state.lastOpenCard.card)}.`;
   } else if (actor) {
@@ -331,29 +345,49 @@ function renderActions() {
       panel.append(actionButton("Fortsätt", "button-primary wide", () => perform(() => decideLowRedeal(state, false))));
     }
   } else if (state.phase.startsWith("exchange")) {
-    const count = selected.size;
+    if (state.openCardOffer) {
+      const offer = make("div", "open-card-choice");
+      offer.append(make("p", "action-copy", "Ett öppet: behåll kortet, eller avstå och få nästa kort dolt."));
+      const card = cardElement(state.openCardOffer.card);
+      card.classList.add("offered-card");
+      offer.append(card);
+      panel.append(offer);
+      panel.append(
+        actionButton("Behåll öppna kortet", "button-primary", () => perform(() => decideOpenCard(state, true))),
+        actionButton(
+          "Ta nästa dolt",
+          "button-secondary",
+          () => perform(() => decideOpenCard(state, false)),
+          state.deck.length < 1,
+        ),
+      );
+      return;
+    }
+    const keepCount = selected.size;
+    const exchangeCount = actor.hand.length - keepCount;
     const chicagoAvailable = state.phase === "exchange_1" && canDeclareChicago(state);
     panel.append(make("p", "action-copy",
       chicagoAvailable
-        ? "Du har minst 15 poäng. Anropa Chicago, stå över bytet eller välj kort att byta."
-        : count === 1
-        ? "Ett ersättningskort delas öppet och visas för alla."
-        : count > 1 ? `${count} ersättningskort förblir privata.` :
-          "Du får stå över eller välja upp till fem kort. Kasserade kort återkommer inte."));
+        ? "Du har minst 15 poäng. Säg Chicago eller markera korten du vill behålla."
+        : exchangeCount === 1
+        ? "Ett öppet: du får välja det synliga kortet eller ta nästa dolt."
+        : exchangeCount > 1 ? `${exchangeCount} ersättningskort delas dolt.` :
+          "Alla kort är markerade och behålls. Kasserade kort återkommer inte."));
     if (chicagoAvailable) {
       panel.append(actionButton(
-        "Anropa Chicago",
+        "Chicago",
         "button-chicago wide",
         () => perform(() => decideChicago(state)),
       ));
     }
     panel.append(
-      actionButton("Stå över bytet", "button-secondary", () => perform(() => exchangeCards(state, []))),
+      actionButton("Behåll alla", "button-secondary", () => perform(() => exchangeCards(state, []))),
       actionButton(
-        count ? `Byt ${count} valda kort` : "Byt valda kort",
+        exchangeCount === 5 ? "Byt alla kort" : `Behåll ${keepCount} · byt ${exchangeCount}`,
         "button-primary",
-        () => perform(() => exchangeCards(state, [...selected])),
-        count === 0 || count > state.deck.length,
+        () => perform(() => exchangeCards(state,
+          actor.hand.map((_, index) => selected.has(index) ? -1 : index).filter((index) => index >= 0))),
+        exchangeCount === 0 || exchangeCount > state.deck.length,
       ),
     );
   } else if (state.phase === "trick") {
@@ -379,12 +413,43 @@ function renderRoundSummary() {
   elements.summaryTitle.textContent = `${state.players[summary.fifthWinner].name} tog sista sticket`;
   elements.summaryHands.replaceChildren();
   summary.poker.calls.forEach((call) => {
-    const panel = make("article", "poker-call");
+    const description = summary.poker.descriptions?.find((item) =>
+      item.playerIndex === call.playerIndex)?.text ||
+      describePokerHand(summary.poker.evaluations[call.playerIndex]);
+    const panel = make("article", "summary-hand");
     panel.append(
       make("strong", "", state.players[call.playerIndex].name),
-      make("span", "", `”${call.text}.”`),
+      make("span", "", description),
     );
+    const hand = make("div", "mini-hand");
+    summary.hands[call.playerIndex].forEach((card) => hand.append(cardElement(card)));
+    panel.append(hand);
     elements.summaryHands.append(panel);
+  });
+
+  if (elements.summaryTricks.dataset.round !== String(summary.round)) {
+    elements.summaryTricks.open = !window.matchMedia("(max-width: 640px)").matches;
+    elements.summaryTricks.dataset.round = String(summary.round);
+  }
+  elements.summaryTrickList.replaceChildren();
+  summary.tricks.forEach((trick) => {
+    const panel = make("article", "summary-trick");
+    const heading = make("div", "summary-trick-heading");
+    heading.append(
+      make("strong", "", `Stick ${trick.number}`),
+      make("span", "", `${state.players[trick.winner].name} vann`),
+    );
+    const plays = make("div", "summary-trick-plays");
+    trick.plays.forEach((play) => {
+      const item = make("div", "summary-trick-play");
+      item.append(
+        cardElement(play.card),
+        make("span", "", `${state.players[play.playerIndex].name}${play.faceUp ? "" : " · sakade"}`),
+      );
+      plays.append(item);
+    });
+    panel.append(heading, plays);
+    elements.summaryTrickList.append(panel);
   });
 }
 
@@ -444,7 +509,9 @@ function cpuAction() {
   if (state.phase === "low_redeal") {
     decideLowRedeal(state, canLowRedeal(state) && cpuAcceptLowRedeal(player.hand));
   } else if (state.phase.startsWith("exchange")) {
-    if (state.phase === "exchange_1" && canDeclareChicago(state) && cpuDeclareChicago(player)) {
+    if (state.openCardOffer) {
+      decideOpenCard(state, true);
+    } else if (state.phase === "exchange_1" && canDeclareChicago(state) && cpuDeclareChicago(player)) {
       decideChicago(state);
     } else {
       const exchangeNumber = Number(state.phase.at(-1));
@@ -515,6 +582,7 @@ elements.newGame.addEventListener("click", () => {
   state = null;
   selected.clear();
   localStorage.removeItem(SAVE_KEY);
+  localStorage.removeItem(LEGACY_SAVE_KEY);
   render();
 });
 

@@ -6,6 +6,7 @@ import {
   createGame,
   decideChicago,
   decideLowRedeal,
+  decideOpenCard,
   exchangeCards,
   nextRound,
   playCard,
@@ -57,7 +58,9 @@ test("seeded complete game reaches a winner against CPU opponents", () => {
     if (state.phase === "low_redeal") {
       decideLowRedeal(state, canLowRedeal(state) && cpuAcceptLowRedeal(player.hand));
     } else if (state.phase.startsWith("exchange")) {
-      if (state.phase === "exchange_1" && canDeclareChicago(state) && cpuDeclareChicago(player)) {
+      if (state.openCardOffer) {
+        decideOpenCard(state, true);
+      } else if (state.phase === "exchange_1" && canDeclareChicago(state) && cpuDeclareChicago(player)) {
         decideChicago(state);
       } else {
         exchangeCards(state, cpuExchangeIndexes(player.hand, Number(state.phase.at(-1)), state.deck.length));

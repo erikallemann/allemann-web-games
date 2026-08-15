@@ -1,14 +1,14 @@
-import { createDeck, shuffle, sortHand, cardLabel } from "./cards.js?v=20260730-2";
-import { comparePokerHands, describePokerCall } from "./poker.js?v=20260730-2";
+import { createDeck, shuffle, sortHand, cardLabel } from "./cards.js?v=20260815-2";
+import { comparePokerHands, describePokerCall, describePokerHand } from "./poker.js?v=20260815-2";
 import {
   chicagoEligible,
   lowRedealEligible,
   normalWinner,
   trickWinner,
   validateCardPlay,
-} from "./rules.js?v=20260730-2";
+} from "./rules.js?v=20260815-2";
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const TARGET_SCORE = 52;
 export const PHASES = [
   "low_redeal",
@@ -64,6 +64,10 @@ function scorePoker(state, moment) {
     playerIndex,
     text: describePokerCall(result.evaluations[playerIndex]),
   }));
+  const descriptions = clockwiseOrder(state.dealer, state.players.length).map((playerIndex) => ({
+    playerIndex,
+    text: describePokerHand(result.evaluations[playerIndex]),
+  }));
   state.lastPokerResult = {
     moment,
     evaluations: result.evaluations,
@@ -72,9 +76,11 @@ function scorePoker(state, moment) {
     points: result.points,
     bestName: result.best.name,
     calls,
+    descriptions,
   };
-  calls.forEach((call) => {
-    addEvent(state, `${state.players[call.playerIndex].name}: ”${call.text}.”`, "call");
+  (moment === "slut" ? descriptions : calls).forEach((description) => {
+    const text = moment === "slut" ? `${description.text}.` : `”${description.text}.”`;
+    addEvent(state, `${state.players[description.playerIndex].name}: ${text}`, "call");
   });
 
   if (result.tied) {
@@ -155,6 +161,14 @@ function finishRound(state, fifthWinner) {
     round: state.round,
     fifthWinner,
     poker: state.lastPokerResult,
+    hands: state.players.map((player) => player.preservedHand.map((card) => ({ ...card }))),
+    tricks: state.trickHistory.map((trick) => ({
+      ...trick,
+      plays: trick.plays.map((play) => ({
+        ...play,
+        card: { ...play.card },
+      })),
+    })),
   };
   addEvent(state, `Omgång ${state.round} är slut.`, "phase");
 }
@@ -174,6 +188,7 @@ function beginRound(state, random) {
     stoppedBy: null,
   };
   state.lastOpenCard = null;
+  state.openCardOffer = null;
   state.lastPokerResult = null;
   state.roundSummary = null;
   state.currentTrick = [];
@@ -218,6 +233,7 @@ export function createGame(playerRecords, random = Math.random) {
     winReason: null,
     chicago: null,
     lastOpenCard: null,
+    openCardOffer: null,
     lastPokerResult: null,
     roundSummary: null,
     trickNumber: 0,
@@ -284,21 +300,55 @@ export function exchangeCards(state, indexes) {
   const discarded = unique.map((index) => player.hand[index]);
   unique.forEach((index) => player.hand.splice(index, 1));
   state.discard.push(...discarded);
+  state.lastOpenCard = null;
+
+  if (unique.length === 1) {
+    const [card] = draw(state, 1);
+    state.openCardOffer = {
+      playerIndex: state.actor,
+      card,
+      phase: state.phase,
+    };
+    addEvent(state, `${player.name} erbjuds det öppna kortet ${cardLabel(card)}.`, "open");
+    return;
+  }
+
   const replacements = draw(state, unique.length);
   player.hand = sortHand([...player.hand, ...replacements]);
-  state.lastOpenCard = unique.length === 1 ? {
-    playerIndex: state.actor,
-    card: { ...replacements[0] },
-    phase: state.phase,
-  } : null;
 
   if (unique.length === 0) {
     addEvent(state, `${player.name} står över bytet.`, "exchange");
-  } else if (unique.length === 1) {
-    addEvent(state, `${player.name} byter ett kort och får det öppna kortet ${cardLabel(replacements[0])}.`, "open");
   } else {
     addEvent(state, `${player.name} byter ${unique.length} kort.`, "exchange");
   }
+  advanceDecision(state, () => completeExchangePhase(state));
+}
+
+export function decideOpenCard(state, accept) {
+  const offer = state.openCardOffer;
+  if (!offer || !state.phase.startsWith("exchange") || offer.playerIndex !== state.actor) {
+    throw new Error("Det finns inget öppet kort att välja.");
+  }
+  if (!accept && state.deck.length < 1) {
+    throw new Error("Det finns inget dolt kort kvar i leken.");
+  }
+
+  const player = state.players[state.actor];
+  if (accept) {
+    player.hand = sortHand([...player.hand, offer.card]);
+    state.lastOpenCard = {
+      playerIndex: state.actor,
+      card: { ...offer.card },
+      phase: offer.phase,
+    };
+    addEvent(state, `${player.name} behåller det öppna kortet ${cardLabel(offer.card)}.`, "open");
+  } else {
+    state.discard.push(offer.card);
+    player.hand = sortHand([...player.hand, ...draw(state, 1)]);
+    state.lastOpenCard = null;
+    addEvent(state, `${player.name} avstår det öppna kortet och får nästa kort dolt.`, "exchange");
+  }
+  state.openCardOffer = null;
   advanceDecision(state, () => completeExchangePhase(state));
 }
 
@@ -318,7 +368,7 @@ export function playCard(state, cardIndex) {
   });
   addEvent(
     state,
-    faceUp ? `${player.name} spelar ${cardLabel(card)}.` : `${player.name} saknar färgen och spelar dolt.`,
+    faceUp ? `${player.name} spelar ${cardLabel(card)}.` : `${player.name} sakar.`,
     "play",
   );
 
@@ -383,7 +433,22 @@ export function restartGame(state, random = Math.random) {
 }
 
 export function restoreGame(value) {
-  if (!value || value.version !== SAVE_VERSION || !PHASES.includes(value.phase)) return null;
+  if (!value || ![2, SAVE_VERSION].includes(value.version) || !PHASES.includes(value.phase)) return null;
   if (!Array.isArray(value.players) || value.players.length < 2 || value.players.length > 4) return null;
-  return value;
+
+  const needsSummaryMigration = value.roundSummary &&
+    (!value.roundSummary.hands || !value.roundSummary.tricks);
+  const roundSummary = needsSummaryMigration ? {
+    ...value.roundSummary,
+    hands: value.roundSummary.hands || value.players.map((player) =>
+      (player.preservedHand || []).map((card) => ({ ...card }))),
+    tricks: value.roundSummary.tricks || value.trickHistory || [],
+  } : value.roundSummary;
+  if (value.version === SAVE_VERSION && !needsSummaryMigration) return value;
+  return {
+    ...value,
+    version: SAVE_VERSION,
+    openCardOffer: value.openCardOffer || null,
+    roundSummary,
+  };
 }
