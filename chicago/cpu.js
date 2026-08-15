@@ -1,5 +1,5 @@
-import { evaluatePoker } from "./poker.js?v=20260730-2";
-import { legalCardIndexes } from "./rules.js?v=20260730-2";
+import { evaluatePoker } from "./poker.js?v=20260815-2";
+import { legalCardIndexes } from "./rules.js?v=20260815-2";
 
 export function cpuAcceptLowRedeal(hand) {
   const evaluation = evaluatePoker(hand);

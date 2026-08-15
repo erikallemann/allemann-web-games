@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { compareEvaluations, comparePokerHands, describePokerCall, evaluatePoker } from "../poker.js";
+import {
+  compareEvaluations,
+  comparePokerHands,
+  describePokerCall,
+  describePokerHand,
+  evaluatePoker,
+} from "../poker.js";
 import { cards } from "./helpers.js";
 
 const categories = [
@@ -75,4 +81,19 @@ test("spoken poker calls describe strength without revealing the hand", () => {
   assert.equal(describePokerCall(evaluatePoker(cards("5s 5d 9h 6c 2s"))), "Ett par, lågt");
   assert.equal(describePokerCall(evaluatePoker(cards("Ks Kd 9h 6c 2s"))), "Ett par, högt");
   assert.equal(describePokerCall(evaluatePoker(cards("9s 8d 7h 6c 5s"))), "Stege, ganska lågt");
+});
+
+test("revealed poker hands are described factually", () => {
+  assert.equal(
+    describePokerHand(evaluatePoker(cards("Ks Kd 4h 4c 2s"))),
+    "Två par, kungar över fyror",
+  );
+  assert.equal(
+    describePokerHand(evaluatePoker(cards("Qs Qd Qh 7c 7s"))),
+    "Kåk, damer över sjuor",
+  );
+  assert.equal(
+    describePokerHand(evaluatePoker(cards("As Kd Qh Jc Ts"))),
+    "Stege till ess",
+  );
 });

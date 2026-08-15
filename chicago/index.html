@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#173c35">
   <meta name="description" content="Spela det svenska kortspelet Chicago mot datorn.">
   <title>Chicago — kortspel</title>
-  <link rel="stylesheet" href="./styles.css?v=20260730-2">
+  <link rel="stylesheet" href="./styles.css?v=20260815-2">
 </head>
 <body>
   <header class="site-header">
@@ -91,7 +91,7 @@
 
           <section class="reveal-panel" id="reveal-panel" aria-labelledby="reveal-title" hidden>
             <div class="section-heading compact">
-              <div><p class="kicker">Pokeranrop</p><h3 id="reveal-title">Bästa hand</h3></div>
+              <div><p class="kicker">Utrop</p><h3 id="reveal-title">Bästa hand</h3></div>
             </div>
             <div class="revealed-hands" id="revealed-hands"></div>
           </section>
@@ -119,6 +119,10 @@
             <p class="kicker">Omgång klar</p>
             <h3 id="summary-title"></h3>
             <div class="summary-hands" id="summary-hands"></div>
+            <details class="summary-tricks" id="summary-tricks">
+              <summary><span>Visa stick</span><span aria-hidden="true">＋</span></summary>
+              <div class="summary-trick-list" id="summary-trick-list"></div>
+            </details>
             <button class="button button-primary" id="next-round" type="button">Nästa omgång</button>
           </section>
 
@@ -134,8 +138,8 @@
           <details class="rules-card">
             <summary><span><span class="kicker">Snabbreferens</span><span>Regler och poäng</span></span><span aria-hidden="true">＋</span></summary>
             <div class="rules-content">
-              <p><strong>Omgång:</strong> fem kort, eventuell låg omgiv, tre byten och fem stick. Chicago kan anropas i stället för det första bytet. Bästa pokerhand ger poäng efter första bytet och efter sista sticket.</p>
-              <p><strong>Pokeranrop:</strong> spelarna beskriver sina händer i turordning utan att visa alla kort. Spelet avgör jämförelsen enligt vanliga pokerregler.</p>
+              <p><strong>Omgång:</strong> fem kort, eventuell låg omgiv, tre byten och fem stick. Markera korten du vill behålla. Vid ett kort i byte erbjuds nästa kort öppet; avstår du får du följande kort dolt. Chicago kan anropas i stället för det första bytet. Bästa pokerhand ger poäng efter första bytet och efter sista sticket.</p>
+              <p><strong>Utrop:</strong> spelarna beskriver sina händer i turordning utan att visa alla kort. Spelet avgör jämförelsen enligt vanliga pokerregler.</p>
               <p><strong>Stick:</strong> följ utspelsfärgen om du kan. Saknar du färgen spelas kortet dolt och kan inte vinna. Bara femte sticket ger 5 poäng.</p>
               <p><strong>Vinst:</strong> du måste ha minst 52 poäng och ta femte sticket. En lyckad Chicago — alla fem stick efter ett anrop vid minst 15 poäng — vinner direkt. Ett misslyckande nollställer poängen.</p>
               <ul class="score-list">
@@ -158,6 +162,6 @@
   </main>
 
   <footer>Chicago · En spelare mot CPU · Ingen speldata lämnar webbläsaren</footer>
-  <script type="module" src="./app.js?v=20260730-2"></script>
+  <script type="module" src="./app.js?v=20260815-2"></script>
 </body>
 </html>

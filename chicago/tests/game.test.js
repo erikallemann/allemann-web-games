@@ -6,6 +6,7 @@ import {
   createGame,
   decideChicago,
   decideLowRedeal,
+  decideOpenCard,
   exchangeCards,
   nextRound,
   playCard,
@@ -64,7 +65,7 @@ test("Chicago is a first-exchange choice that skips the declarer's exchange", ()
   assert.throws(() => decideChicago(state), /inte tillgängligt/);
 });
 
-test("one-card exchange is public and discarded cards never return to deck", () => {
+test("one-card exchange offers a public card that can be accepted", () => {
   const state = twoPlayerGame();
   state.phase = "exchange_1";
   state.actor = 0;
@@ -72,9 +73,31 @@ test("one-card exchange is public and discarded cards never return to deck", () 
   state.actionPosition = 0;
   const discarded = state.players[0].hand[0].id;
   exchangeCards(state, [0]);
+  assert.equal(state.openCardOffer.playerIndex, 0);
+  assert.equal(state.players[0].hand.length, 4);
+  const offered = state.openCardOffer.card.id;
+  decideOpenCard(state, true);
   assert.equal(state.lastOpenCard.playerIndex, 0);
+  assert.equal(state.lastOpenCard.card.id, offered);
+  assert.equal(state.players[0].hand.length, 5);
   assert.equal(state.discard.some((card) => card.id === discarded), true);
   assert.equal(state.deck.some((card) => card.id === discarded), false);
+});
+
+test("rejecting a public replacement discards it and deals the next card face-down", () => {
+  const state = twoPlayerGame();
+  state.phase = "exchange_1";
+  state.actor = 0;
+  state.actionOrder = [0, 1];
+  state.actionPosition = 0;
+  exchangeCards(state, [0]);
+  const offered = state.openCardOffer.card.id;
+  const next = state.deck[0].id;
+  decideOpenCard(state, false);
+  assert.equal(state.openCardOffer, null);
+  assert.equal(state.lastOpenCard, null);
+  assert.equal(state.discard.some((card) => card.id === offered), true);
+  assert.equal(state.players[0].hand.some((card) => card.id === next), true);
 });
 
 test("first poker scoring publishes spoken calls without publishing hands", () => {
@@ -145,6 +168,27 @@ test("the first four tricks score zero and the fifth scores five", () => {
       assert.equal(state.actor, state.trickHistory.at(-1).winner, "trick winner leads next");
     }
   }
+  assert.equal(state.phase, "round_summary");
+  assert.deepEqual(
+    state.roundSummary.hands.map((hand) => hand.length),
+    [5, 5],
+    "all complete hands are retained for the pre-round reveal",
+  );
+  assert.deepEqual(
+    state.roundSummary.tricks.map((trick) => [trick.number, trick.plays.length]),
+    [[1, 2], [2, 2], [3, 2], [4, 2], [5, 2]],
+    "all five tricks are retained in chronological order",
+  );
+});
+
+test("an off-suit hidden play is announced as a discard", () => {
+  const state = configuredTrickGame();
+  state.players[0].hand = cards("As");
+  state.players[1].hand = cards("2h");
+  state.chicago = { declarer: null, active: false, failed: false, stoppedBy: null };
+  playCard(state, 0);
+  playCard(state, 0);
+  assert.equal(state.events.some((event) => event.message === "CPU sakar."), true);
 });
 
 test("52 without fifth trick does not win; fifth-trick award can produce victory", () => {
@@ -201,4 +245,13 @@ test("saved games are versioned", () => {
   const state = twoPlayerGame();
   assert.equal(restoreGame(state), state);
   assert.equal(restoreGame({ ...state, version: SAVE_VERSION + 1 }), null);
+});
+
+test("version 2 saves migrate to the open-card state model", () => {
+  const state = twoPlayerGame();
+  delete state.openCardOffer;
+  state.version = 2;
+  const restored = restoreGame(state);
+  assert.equal(restored.version, SAVE_VERSION);
+  assert.equal(restored.openCardOffer, null);
 });
