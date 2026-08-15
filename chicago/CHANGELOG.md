@@ -2,6 +2,7 @@
 
 ## 2026-08-15
 
+- Show the active browser asset version in the game footer.
 - Renamed the poker-call heading from “Pokeranrop” to “Utrop”.
 - Changed human exchange selection to mark cards to keep.
 - Added a choice to accept the face-up replacement for a one-card exchange or reject it and take the next card face-down.

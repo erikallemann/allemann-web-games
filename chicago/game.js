@@ -1,12 +1,12 @@
-import { createDeck, shuffle, sortHand, cardLabel } from "./cards.js?v=20260815-2";
-import { comparePokerHands, describePokerCall, describePokerHand } from "./poker.js?v=20260815-2";
+import { createDeck, shuffle, sortHand, cardLabel } from "./cards.js?v=20260815-3";
+import { comparePokerHands, describePokerCall, describePokerHand } from "./poker.js?v=20260815-3";
 import {
   chicagoEligible,
   lowRedealEligible,
   normalWinner,
   trickWinner,
   validateCardPlay,
-} from "./rules.js?v=20260815-2";
+} from "./rules.js?v=20260815-3";
 
 export const SAVE_VERSION = 3;
 export const TARGET_SCORE = 52;

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-15 — Visible release marker
+
+- Show the active browser asset version in the game footer.
+
 ## 2026-08-12 — Family roster and mobile score ribbon
 
 - Added the editable family roster Erik, Hanna, Esther, Ingrid, Jon, Johanna, Bill, and Olle. Setups begin with Erik as Human and Hanna as CPU; additional seats use unused roster names as CPU players.

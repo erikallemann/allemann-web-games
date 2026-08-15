@@ -1,13 +1,13 @@
-import { GameEngine, STORAGE_KEY } from "./game.js?v=20260812-1";
-import { strategyForPlayer } from "./cpu.js?v=20260812-1";
-import { farkleProbability, specialCombination } from "./scoring.js?v=20260812-1";
+import { GameEngine, STORAGE_KEY } from "./game.js?v=20260815-1";
+import { strategyForPlayer } from "./cpu.js?v=20260815-1";
+import { farkleProbability, specialCombination } from "./scoring.js?v=20260815-1";
 import {
   FAMILY_ROSTER,
   LINEUP_KEY,
   nextRosterPlayer,
   normalizeLineup,
   restoreLineup,
-} from "./setup.js?v=20260812-1";
+} from "./setup.js?v=20260815-1";
 import {
   LANGUAGE_KEY,
   SUPPORTED_LANGUAGES,
@@ -16,13 +16,15 @@ import {
   translateEvent,
   translateRuntimeText,
   translateScoreLabel,
-} from "./i18n.js?v=20260812-1";
+} from "./i18n.js?v=20260815-1";
 
 const DICE_GLYPHS = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 const PROBABILITY_KEY = "ten-thousand-show-probability";
 const CPU_SPEED_KEY = "ten-thousand-cpu-speed";
 const CPU_DELAYS = Object.freeze({ normal: 650, fast: 220, instant: 60 });
 const $ = (selector) => document.querySelector(selector);
+const RELEASE_VERSION = new URL(import.meta.url).searchParams.get("v") || "dev";
+$("#release-version").textContent = `v${RELEASE_VERSION}`;
 let language = SUPPORTED_LANGUAGES.includes(localStorage.getItem(LANGUAGE_KEY))
   ? localStorage.getItem(LANGUAGE_KEY)
   : "en";

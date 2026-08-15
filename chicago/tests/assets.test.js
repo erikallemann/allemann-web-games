@@ -18,4 +18,6 @@ test("all browser assets share one release marker", async () => {
       .map((match) => match[1]);
     assert.ok(localImports.every((path) => path.includes("?v=")));
   });
+  assert.match(contents[0], /id="release-version"/);
+  assert.match(contents[1], /new URL\(import\.meta\.url\)\.searchParams\.get\("v"\)/);
 });

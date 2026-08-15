@@ -1,4 +1,4 @@
-import { cardLabel, RANK_LABELS, SUIT_SYMBOLS } from "./cards.js?v=20260815-2";
+import { cardLabel, RANK_LABELS, SUIT_SYMBOLS } from "./cards.js?v=20260815-3";
 import {
   canDeclareChicago,
   canLowRedeal,
@@ -11,15 +11,15 @@ import {
   playCard,
   restartGame,
   restoreGame,
-} from "./game.js?v=20260815-2";
-import { legalCardIndexes } from "./rules.js?v=20260815-2";
-import { describePokerHand } from "./poker.js?v=20260815-2";
+} from "./game.js?v=20260815-3";
+import { legalCardIndexes } from "./rules.js?v=20260815-3";
+import { describePokerHand } from "./poker.js?v=20260815-3";
 import {
   cpuAcceptLowRedeal,
   cpuChooseCard,
   cpuDeclareChicago,
   cpuExchangeIndexes,
-} from "./cpu.js?v=20260815-2";
+} from "./cpu.js?v=20260815-3";
 
 const SAVE_KEY = "chicago-game-v3";
 const LEGACY_SAVE_KEY = "chicago-game-v2";
@@ -35,6 +35,7 @@ const PHASE_LABELS = {
   game_over: "Partiet avslutat",
 };
 const SPEEDS = { normal: 850, fast: 260, instant: 0 };
+const RELEASE_VERSION = new URL(import.meta.url).searchParams.get("v") || "dev";
 
 let state = loadGame();
 let selected = new Set();
@@ -83,7 +84,9 @@ const elements = {
   nextRound: byId("next-round"),
   winnerCard: byId("winner-card"),
   eventLog: byId("event-log"),
+  releaseVersion: byId("release-version"),
 };
+elements.releaseVersion.textContent = `v${RELEASE_VERSION}`;
 
 function loadGame() {
   try {

@@ -36,4 +36,4 @@ npm run check
 
 ## Deployment
 
-Caddy redirects `/chicago` to `/chicago/`, strips the prefix for `/chicago/*`, and serves `/home/erik/sites/chicago` only on `allemann.se` and `www.allemann.se`. Static assets use one shared `v=` marker; bump it in `index.html` and all module imports for every release.
+Caddy redirects `/chicago` to `/chicago/`, strips the prefix for `/chicago/*`, and serves `/home/erik/sites/chicago` only on `allemann.se` and `www.allemann.se`. Static assets use one shared `v=` marker; bump it in `index.html` and all module imports for every release. The footer derives its visible version from the loaded `app.js` marker.
