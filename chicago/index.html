@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#173c35">
   <meta name="description" content="Spela det svenska kortspelet Chicago mot datorn.">
   <title>Chicago — kortspel</title>
-  <link rel="stylesheet" href="./styles.css?v=20260815-3">
+  <link rel="stylesheet" href="./styles.css?v=20260818-4">
 </head>
 <body>
   <header class="site-header">
@@ -31,22 +31,15 @@
       <form class="setup-card" id="setup-form">
         <div class="section-heading">
           <div><p class="kicker">Nytt parti</p><h2>Vilka spelar?</h2></div>
-          <span class="player-count">1 människa</span>
+          <span class="player-count" id="player-count">2 / 4</span>
         </div>
-        <label class="field">
-          <span>Ditt namn</span>
-          <input id="human-name" maxlength="24" value="Du" autocomplete="name" required>
-        </label>
-        <fieldset class="player-choice">
-          <legend>Antal spelare</legend>
-          <div class="segmented">
-            <label><input type="radio" name="player-count" value="2" checked><span>2</span></label>
-            <label><input type="radio" name="player-count" value="3"><span>3</span></label>
-            <label><input type="radio" name="player-count" value="4"><span>4</span></label>
-          </div>
-          <p id="opponent-copy">Du möter 1 CPU-spelare.</p>
-        </fieldset>
-        <button class="button button-primary setup-start" type="submit">Starta spelet <span aria-hidden="true">→</span></button>
+        <div class="name-list" id="name-list"></div>
+        <datalist id="family-roster"></datalist>
+        <p class="roster-hint">Namn och antal spelare sparas på den här enheten. Välj ett familjenamn eller skriv ett annat.</p>
+        <div class="setup-actions">
+          <button class="button button-secondary" id="add-player" type="button">+ Lägg till spelare</button>
+          <button class="button button-primary setup-start" type="submit">Starta spelet <span aria-hidden="true">→</span></button>
+        </div>
       </form>
     </section>
 
@@ -68,10 +61,17 @@
         </div>
       </section>
 
-      <section class="score-section" aria-labelledby="score-title">
+      <section class="score-section" id="score-section" aria-labelledby="score-title">
         <div class="section-heading compact">
           <div><p class="kicker">Poängtavla</p><h1 id="score-title">Först till 52 och sista sticket</h1></div>
           <span class="round-label" id="round-label"></span>
+        </div>
+        <div class="mobile-score-summary">
+          <div class="mobile-score-heading">
+            <span><strong>Poängtavla</strong><small id="mobile-round-label"></small></span>
+            <button class="scoreboard-toggle" id="scoreboard-toggle" type="button" aria-controls="scoreboard" aria-expanded="false">Detaljer</button>
+          </div>
+          <div class="score-ribbon" id="score-ribbon" role="list" aria-label="Poängtavla"></div>
         </div>
         <div class="scoreboard" id="scoreboard"></div>
       </section>
@@ -162,6 +162,6 @@
   </main>
 
   <footer>Chicago · En spelare mot CPU · Ingen speldata lämnar webbläsaren · <span class="release-version" id="release-version"></span></footer>
-  <script type="module" src="./app.js?v=20260815-3"></script>
+  <script type="module" src="./app.js?v=20260818-4"></script>
 </body>
 </html>

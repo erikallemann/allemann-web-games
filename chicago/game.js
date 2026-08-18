@@ -1,14 +1,14 @@
-import { createDeck, shuffle, sortHand, cardLabel } from "./cards.js?v=20260815-3";
-import { comparePokerHands, describePokerCall, describePokerHand } from "./poker.js?v=20260815-3";
+import { createDeck, shuffle, sortHand, cardLabel } from "./cards.js?v=20260818-4";
+import { comparePokerHands, describePokerCall, describePokerHand } from "./poker.js?v=20260818-4";
 import {
   chicagoEligible,
   lowRedealEligible,
   normalWinner,
   trickWinner,
   validateCardPlay,
-} from "./rules.js?v=20260815-3";
+} from "./rules.js?v=20260818-4";
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const TARGET_SCORE = 52;
 export const PHASES = [
   "low_redeal",
@@ -16,6 +16,7 @@ export const PHASES = [
   "exchange_2",
   "exchange_3",
   "trick",
+  "final_trick",
   "round_summary",
   "game_over",
 ];
@@ -125,6 +126,7 @@ function beginTricks(state) {
   state.trickNumber = 1;
   state.currentTrick = [];
   state.trickHistory = [];
+  state.pendingFifthWinner = null;
   state.lastTrickWinner = null;
   addEvent(state, `${state.players[state.actor].name} spelar ut i första sticket.`, "phase");
 }
@@ -239,6 +241,7 @@ export function createGame(playerRecords, random = Math.random) {
     trickNumber: 0,
     currentTrick: [],
     trickHistory: [],
+    pendingFifthWinner: null,
   };
   beginRound(state, random);
   return state;
@@ -401,24 +404,37 @@ export function playCard(state, cardIndex) {
   }
 
   if (state.trickNumber === 5) {
-    if (state.chicago.active && state.players[state.chicago.declarer].tricks === 5) {
-      finishGame(
-        state,
-        state.chicago.declarer,
-        "chicago",
-        `${state.players[state.chicago.declarer].name} tar alla fem stick och vinner med Chicago!`,
-      );
-      return;
-    }
-    state.players[winner].score += 5;
-    addEvent(state, `${state.players[winner].name} tar femte sticket och får 5 poäng.`, "score");
-    finishRound(state, winner);
+    state.phase = "final_trick";
+    state.actor = null;
+    state.pendingFifthWinner = winner;
+    addEvent(state, "Sista sticket ligger kvar på bordet för granskning.", "phase");
     return;
   }
 
   state.trickNumber += 1;
   state.currentTrick = [];
   state.actor = winner;
+}
+
+export function confirmFinalTrick(state) {
+  if (state.phase !== "final_trick" || !Number.isInteger(state.pendingFifthWinner)) {
+    throw new Error("Det finns inget sista stick att bekräfta.");
+  }
+  const winner = state.pendingFifthWinner;
+  state.pendingFifthWinner = null;
+
+  if (state.chicago.active && state.players[state.chicago.declarer].tricks === 5) {
+    finishGame(
+      state,
+      state.chicago.declarer,
+      "chicago",
+      `${state.players[state.chicago.declarer].name} tar alla fem stick och vinner med Chicago!`,
+    );
+    return;
+  }
+  state.players[winner].score += 5;
+  addEvent(state, `${state.players[winner].name} tar femte sticket och får 5 poäng.`, "score");
+  finishRound(state, winner);
 }
 
 export function nextRound(state, random = Math.random) {
@@ -433,7 +449,7 @@ export function restartGame(state, random = Math.random) {
 }
 
 export function restoreGame(value) {
-  if (!value || ![2, SAVE_VERSION].includes(value.version) || !PHASES.includes(value.phase)) return null;
+  if (!value || ![2, 3, SAVE_VERSION].includes(value.version) || !PHASES.includes(value.phase)) return null;
   if (!Array.isArray(value.players) || value.players.length < 2 || value.players.length > 4) return null;
 
   const needsSummaryMigration = value.roundSummary &&
@@ -449,6 +465,7 @@ export function restoreGame(value) {
     ...value,
     version: SAVE_VERSION,
     openCardOffer: value.openCardOffer || null,
+    pendingFifthWinner: Number.isInteger(value.pendingFifthWinner) ? value.pendingFifthWinner : null,
     roundSummary,
   };
 }

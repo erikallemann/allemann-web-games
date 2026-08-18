@@ -1,7 +1,8 @@
-import { cardLabel, RANK_LABELS, SUIT_SYMBOLS } from "./cards.js?v=20260815-3";
+import { cardLabel, RANK_LABELS, SUIT_SYMBOLS } from "./cards.js?v=20260818-4";
 import {
   canDeclareChicago,
   canLowRedeal,
+  confirmFinalTrick,
   createGame,
   decideChicago,
   decideLowRedeal,
@@ -11,26 +12,33 @@ import {
   playCard,
   restartGame,
   restoreGame,
-} from "./game.js?v=20260815-3";
-import { legalCardIndexes } from "./rules.js?v=20260815-3";
-import { describePokerHand } from "./poker.js?v=20260815-3";
+} from "./game.js?v=20260818-4";
+import { legalCardIndexes } from "./rules.js?v=20260818-4";
+import { describePokerHand } from "./poker.js?v=20260818-4";
 import {
   cpuAcceptLowRedeal,
   cpuChooseCard,
   cpuDeclareChicago,
   cpuExchangeIndexes,
-} from "./cpu.js?v=20260815-3";
+} from "./cpu.js?v=20260818-4";
+import {
+  FAMILY_ROSTER,
+  LINEUP_KEY,
+  nextRosterPlayer,
+  normalizeLineup,
+  restoreLineup,
+} from "./setup.js?v=20260818-4";
 
-const SAVE_KEY = "chicago-game-v3";
-const LEGACY_SAVE_KEY = "chicago-game-v2";
+const SAVE_KEY = "chicago-game-v4";
+const LEGACY_SAVE_KEYS = ["chicago-game-v3", "chicago-game-v2"];
 const SPEED_KEY = "chicago-cpu-speed-v1";
-const CPU_NAMES = ["Astrid", "Bosse", "Clara"];
 const PHASE_LABELS = {
   low_redeal: "Låg omgiv",
   exchange_1: "Första bytet",
   exchange_2: "Andra bytet",
   exchange_3: "Tredje bytet",
   trick: "Stickspel",
+  final_trick: "Sista sticket",
   round_summary: "Omgången avslutad",
   game_over: "Partiet avslutat",
 };
@@ -38,18 +46,22 @@ const SPEEDS = { normal: 850, fast: 260, instant: 0 };
 const RELEASE_VERSION = new URL(import.meta.url).searchParams.get("v") || "dev";
 
 let state = loadGame();
+let setupPlayers = restoreLineup(localStorage.getItem(LINEUP_KEY));
 let selected = new Set();
 let selectionKey = "";
 let cpuPaused = false;
 let cpuTimer = null;
 let message = "";
+let scoreDetailsOpen = false;
 
 const byId = (id) => document.getElementById(id);
 const elements = {
   setupView: byId("setup-view"),
   setupForm: byId("setup-form"),
-  humanName: byId("human-name"),
-  opponentCopy: byId("opponent-copy"),
+  playerCount: byId("player-count"),
+  nameList: byId("name-list"),
+  familyRoster: byId("family-roster"),
+  addPlayer: byId("add-player"),
   gameView: byId("game-view"),
   restartGame: byId("restart-game"),
   newGame: byId("new-game"),
@@ -57,7 +69,11 @@ const elements = {
   cpuSpeed: byId("cpu-speed"),
   cpuPause: byId("cpu-pause"),
   roundLabel: byId("round-label"),
+  mobileRoundLabel: byId("mobile-round-label"),
+  scoreSection: byId("score-section"),
   scoreboard: byId("scoreboard"),
+  scoreboardToggle: byId("scoreboard-toggle"),
+  scoreRibbon: byId("score-ribbon"),
   turnEyebrow: byId("turn-eyebrow"),
   turnTitle: byId("turn-title"),
   deckCount: byId("deck-count"),
@@ -91,15 +107,16 @@ elements.releaseVersion.textContent = `v${RELEASE_VERSION}`;
 function loadGame() {
   try {
     const current = localStorage.getItem(SAVE_KEY);
-    const restored = restoreGame(JSON.parse(current || localStorage.getItem(LEGACY_SAVE_KEY)));
+    const legacy = LEGACY_SAVE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
+    const restored = restoreGame(JSON.parse(current || legacy));
     if (restored && !current) {
       localStorage.setItem(SAVE_KEY, JSON.stringify(restored));
-      localStorage.removeItem(LEGACY_SAVE_KEY);
+      LEGACY_SAVE_KEYS.forEach((key) => localStorage.removeItem(key));
     }
     return restored;
   } catch {
     localStorage.removeItem(SAVE_KEY);
-    localStorage.removeItem(LEGACY_SAVE_KEY);
+    LEGACY_SAVE_KEYS.forEach((key) => localStorage.removeItem(key));
     return null;
   }
 }
@@ -113,6 +130,45 @@ function make(tag, className, text) {
   if (className) element.className = className;
   if (text !== undefined) element.textContent = text;
   return element;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character]);
+}
+
+function captureSetupPlayers() {
+  return [...elements.nameList.querySelectorAll("input")].map((input, index) => ({
+    name: input.value,
+    type: index === 0 ? "human" : "cpu",
+  }));
+}
+
+function rememberLineup(entries = captureSetupPlayers()) {
+  setupPlayers = normalizeLineup(entries);
+  localStorage.setItem(LINEUP_KEY, JSON.stringify(setupPlayers));
+  return setupPlayers;
+}
+
+function renderSetup() {
+  elements.familyRoster.innerHTML = FAMILY_ROSTER.map((name) =>
+    `<option value="${escapeHtml(name)}"></option>`).join("");
+  elements.nameList.innerHTML = setupPlayers.map((player, index) => `
+    <div class="name-row">
+      <span class="name-index">${index + 1}</span>
+      <div class="player-fields">
+        <input name="player-${index}" value="${escapeHtml(player.name)}" maxlength="24" autocomplete="off" list="family-roster" aria-label="Namn på spelare ${index + 1}" required>
+        <span class="setup-player-role">${index === 0 ? "Du" : "CPU"}</span>
+      </div>
+      <button class="remove-player" type="button" data-remove="${index}" aria-label="Ta bort spelare ${index + 1}" ${index === 0 || setupPlayers.length <= 2 ? "disabled" : ""}>×</button>
+    </div>`).join("");
+  elements.playerCount.textContent = `${setupPlayers.length} / 4`;
+  elements.addPlayer.disabled = setupPlayers.length >= 4;
 }
 
 function actionButton(label, className, action, disabled = false) {
@@ -163,6 +219,8 @@ function faceDownElement() {
 
 function renderScoreboard() {
   elements.scoreboard.replaceChildren();
+  elements.scoreRibbon.replaceChildren();
+  elements.scoreRibbon.className = `score-ribbon score-count-${state.players.length}`;
   state.players.forEach((player, index) => {
     const card = make("article", `player-card ${index === state.actor ? "current" : ""}`);
     card.append(make("span", "player-name", player.name), make("strong", "score", String(player.score)));
@@ -176,12 +234,35 @@ function renderScoreboard() {
     if (player.tricks) meta.append(make("span", "badge", `${player.tricks} ${player.tricks === 1 ? "stick" : "stick"}`));
     card.append(meta);
     elements.scoreboard.append(card);
+
+    const active = index === state.actor;
+    const statuses = [
+      index === state.dealer ? "givare" : "",
+      active ? "på tur" : "",
+      state.chicago?.declarer === index ? "Chicago" : "",
+    ].filter(Boolean);
+    const chip = make("div", `score-chip ${active ? "current" : ""}`);
+    chip.setAttribute("role", "listitem");
+    if (active) chip.setAttribute("aria-current", "true");
+    chip.setAttribute("aria-label", `${player.name}, ${player.score} poäng${statuses.length ? `, ${statuses.join(", ")}` : ""}`);
+    const name = make("span", "score-chip-name", player.name);
+    name.title = player.name;
+    chip.append(
+      name,
+      make("strong", "", String(player.score)),
+      make("span", "score-chip-state", index === state.dealer ? "G" : ""),
+    );
+    elements.scoreRibbon.append(chip);
   });
+  elements.mobileRoundLabel.textContent = `Omgång ${state.round}`;
+  elements.scoreboardToggle.textContent = scoreDetailsOpen ? "Dölj" : "Detaljer";
+  elements.scoreboardToggle.setAttribute("aria-expanded", String(scoreDetailsOpen));
+  elements.scoreSection.classList.toggle("details-open", scoreDetailsOpen);
 }
 
 function renderOpponents() {
   elements.opponents.replaceChildren();
-  const visible = !["round_summary", "game_over"].includes(state.phase);
+  const visible = !["final_trick", "round_summary", "game_over"].includes(state.phase);
   elements.opponents.hidden = !visible;
   if (!visible) return;
   state.players.forEach((player, index) => {
@@ -220,10 +301,11 @@ function displayTrickPlays() {
 }
 
 function renderTrick() {
-  const visible = state.phase === "trick";
+  const visible = ["trick", "final_trick"].includes(state.phase);
   elements.trickStage.hidden = !visible;
   if (!visible) return;
-  elements.trickTitle.textContent = `Stick ${state.trickNumber} av 5`;
+  elements.trickTitle.textContent = state.phase === "final_trick" ? "Sista sticket" :
+    `Stick ${state.trickNumber} av 5`;
   const leader = state.currentTrick.length ? state.currentTrick[0].playerIndex :
     (state.trickHistory.at(-1)?.winner ?? state.actor);
   elements.leaderLabel.textContent = `${state.players[leader].name} spelar ut`;
@@ -288,7 +370,9 @@ function renderAnnouncement() {
   let text = "";
   let chicago = false;
   const actor = currentPlayer();
-  if (state.chicago?.active) {
+  if (state.phase === "final_trick") {
+    text = `${state.players[state.pendingFifthWinner].name} vann sista sticket. Granska korten och visa sedan resultatet.`;
+  } else if (state.chicago?.active) {
     text = `${state.players[state.chicago.declarer].name} har anropat Chicago och måste ta alla fem stick.`;
     chicago = true;
   } else if (state.chicago?.failed) {
@@ -314,7 +398,7 @@ function perform(action) {
     message = "";
     saveGame();
     render();
-    if (wasTrick && state.phase === "trick") {
+    if (wasTrick && ["trick", "final_trick"].includes(state.phase)) {
       requestAnimationFrame(() => elements.trickStage.scrollIntoView({ block: "nearest" }));
     }
     scheduleCpu();
@@ -328,6 +412,16 @@ function renderActions() {
   const panel = elements.actionPanel;
   panel.replaceChildren();
   if (["round_summary", "game_over"].includes(state.phase)) return;
+  if (state.phase === "final_trick") {
+    const confirmation = make("div", "final-trick-confirm");
+    confirmation.append(
+      make("h3", "", "Sista sticket är spelat"),
+      make("p", "", "Korten ligger kvar på bordet tills du är redo att se poäng och händer."),
+      actionButton("Visa resultat", "button-primary wide", () => perform(() => confirmFinalTrick(state))),
+    );
+    panel.append(confirmation);
+    return;
+  }
   const actor = currentPlayer();
   if (!actor || actor.type === "cpu") {
     panel.append(make("p", "action-copy", cpuPaused
@@ -482,12 +576,15 @@ function render() {
   elements.setupView.hidden = hasGame;
   elements.gameView.hidden = !hasGame;
   elements.restartGame.hidden = !hasGame;
-  if (!state) return;
+  if (!state) {
+    renderSetup();
+    return;
+  }
   syncSelection();
   elements.phaseLabel.textContent = PHASE_LABELS[state.phase];
   elements.roundLabel.textContent = `Omgång ${state.round}`;
   elements.deckCount.textContent = String(state.deck.length);
-  elements.deckCount.parentElement.hidden = ["round_summary", "game_over"].includes(state.phase);
+  elements.deckCount.parentElement.hidden = ["final_trick", "round_summary", "game_over"].includes(state.phase);
   const actor = currentPlayer();
   elements.turnEyebrow.textContent = actor ? "På tur" : "Status";
   elements.turnTitle.textContent = actor?.name || PHASE_LABELS[state.phase];
@@ -499,7 +596,7 @@ function render() {
   renderPokerReveal();
   renderTrick();
   renderHumanHand();
-  elements.humanHand.closest(".hand-area").hidden = ["round_summary", "game_over"].includes(state.phase);
+  elements.humanHand.closest(".hand-area").hidden = ["final_trick", "round_summary", "game_over"].includes(state.phase);
   renderActions();
   renderRoundSummary();
   renderWinner();
@@ -543,25 +640,35 @@ function scheduleCpu() {
 
 elements.setupForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const count = Number(new FormData(elements.setupForm).get("player-count"));
-  const name = elements.humanName.value.trim() || "Du";
-  state = createGame([
-    { name, type: "human" },
-    ...CPU_NAMES.slice(0, count - 1).map((cpuName) => ({ name: cpuName, type: "cpu" })),
-  ]);
+  rememberLineup();
+  state = createGame(setupPlayers);
   saveGame();
   render();
   scheduleCpu();
 });
 
-document.querySelectorAll('input[name="player-count"]').forEach((input) => {
-  input.addEventListener("change", () => {
-    const opponents = Number(input.value) - 1;
-    elements.opponentCopy.textContent = `Du möter ${opponents} CPU-${opponents === 1 ? "spelare" : "spelare"}.`;
-  });
+elements.addPlayer.addEventListener("click", () => {
+  rememberLineup();
+  if (setupPlayers.length < 4) setupPlayers.push(nextRosterPlayer(setupPlayers));
+  rememberLineup(setupPlayers);
+  renderSetup();
+  elements.nameList.querySelector("input:last-of-type")?.focus();
 });
+elements.nameList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove]");
+  if (!button || setupPlayers.length <= 2 || Number(button.dataset.remove) === 0) return;
+  rememberLineup();
+  setupPlayers.splice(Number(button.dataset.remove), 1);
+  rememberLineup(setupPlayers);
+  renderSetup();
+});
+elements.nameList.addEventListener("change", () => rememberLineup());
 
 elements.nextRound.addEventListener("click", () => perform(() => nextRound(state)));
+elements.scoreboardToggle.addEventListener("click", () => {
+  scoreDetailsOpen = !scoreDetailsOpen;
+  renderScoreboard();
+});
 elements.cpuSpeed.value = localStorage.getItem(SPEED_KEY) || "normal";
 elements.cpuSpeed.addEventListener("change", () => {
   localStorage.setItem(SPEED_KEY, elements.cpuSpeed.value);
@@ -584,8 +691,10 @@ elements.newGame.addEventListener("click", () => {
   clearTimeout(cpuTimer);
   state = null;
   selected.clear();
+  scoreDetailsOpen = false;
+  setupPlayers = restoreLineup(localStorage.getItem(LINEUP_KEY));
   localStorage.removeItem(SAVE_KEY);
-  localStorage.removeItem(LEGACY_SAVE_KEY);
+  LEGACY_SAVE_KEYS.forEach((key) => localStorage.removeItem(key));
   render();
 });
 

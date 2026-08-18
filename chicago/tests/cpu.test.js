@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   canDeclareChicago,
   canLowRedeal,
+  confirmFinalTrick,
   createGame,
   decideChicago,
   decideLowRedeal,
@@ -73,6 +74,8 @@ test("seeded complete game reaches a winner against CPU opponents", () => {
         chicago: state.chicago,
         playerIndex: state.actor,
       }));
+    } else if (state.phase === "final_trick") {
+      confirmFinalTrick(state);
     } else if (state.phase === "round_summary") {
       nextRound(state, random);
     }
