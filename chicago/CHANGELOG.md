@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-18
+
+- Add the remembered, editable family roster from 10000 to Chicago's setup while retaining one human and up to three CPU opponents.
+- Add a compact sticky mobile score ribbon with expandable player details, matching the 10000 game.
+- Add breathing room between the mobile Details control and the score ribbon.
+- Pause after the fifth trick so it remains visible until the player chooses to show the round result.
+- Correct the opponent card-back selector so five-card stacks keep their intended compact alignment on mobile.
+
 ## 2026-08-15
 
 - Show the active browser asset version in the game footer.

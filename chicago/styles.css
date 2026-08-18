@@ -54,17 +54,18 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; letter-spacing: -.0
 .section-heading.compact h2 { font-size: 24px; }
 .section-heading.compact h3 { font-size: 23px; }
 .player-count, .round-label, .leader-label { border-radius: 99px; padding: 7px 12px; color: var(--ink-soft); background: var(--sage); font-size: 12px; font-weight: 800; white-space: nowrap; }
-.field { display: grid; gap: 8px; margin: 28px 0 22px; color: var(--ink-soft); font-size: 12px; font-weight: 850; }
-.field input { min-height: 52px; width: 100%; padding: 0 15px; border: 1px solid var(--line); border-radius: 11px; color: var(--ink); background: white; font-weight: 700; }
-.player-choice { margin: 0 0 26px; padding: 0; border: 0; }
-.player-choice legend { margin-bottom: 9px; color: var(--ink-soft); font-size: 12px; font-weight: 850; }
-.player-choice p { margin: 10px 0 0; color: var(--ink-soft); font-size: 12px; }
-.segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.segmented input { position: absolute; opacity: 0; pointer-events: none; }
-.segmented span { display: grid; place-items: center; min-height: 50px; border: 1px solid var(--line); border-radius: 11px; background: white; cursor: pointer; font-weight: 900; }
-.segmented input:checked + span { border: 2px solid var(--coral); color: var(--coral-dark); background: #fbe8e0; }
-.segmented input:focus-visible + span { outline: 3px solid var(--gold); outline-offset: 3px; }
-.setup-start { width: 100%; min-height: 56px; font-size: 16px; }
+.name-list { display: grid; gap: 11px; margin: 26px 0; }
+.name-row { display: grid; grid-template-columns: 34px 1fr 38px; align-items: center; gap: 10px; }
+.name-index { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 50%; color: white; background: var(--ink); font-size: 12px; font-weight: 900; }
+.player-fields { display: grid; grid-template-columns: minmax(0, 1fr) 62px; gap: 8px; }
+.name-row input { width: 100%; min-height: 50px; padding: 0 15px; border: 1px solid var(--line); border-radius: 11px; color: var(--ink); background: white; }
+.setup-player-role { display: grid; min-height: 50px; place-items: center; border-radius: 11px; color: var(--ink-soft); background: var(--sage); font-size: 11px; font-weight: 900; }
+.remove-player { width: 38px; height: 38px; border: 0; border-radius: 50%; color: var(--ink-soft); background: transparent; cursor: pointer; font-size: 21px; }
+.remove-player:hover:not(:disabled) { color: var(--coral-dark); background: #f5ddd6; }
+.remove-player:disabled { cursor: default; opacity: .25; }
+.roster-hint { margin: -14px 0 24px 44px; color: var(--ink-soft); font-size: 11px; line-height: 1.45; }
+.setup-actions { display: flex; justify-content: space-between; gap: 12px; }
+.setup-start { min-height: 56px; font-size: 16px; }
 
 .button { min-height: 46px; padding: 0 18px; border: 1px solid transparent; border-radius: 12px; font-weight: 850; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, background .15s ease; }
 .button:hover:not(:disabled) { transform: translateY(-2px); }
@@ -82,6 +83,7 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; letter-spacing: -.0
 .speed-controls label { display: flex; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 11px; font-weight: 800; }
 .speed-controls select { min-height: 44px; padding: 0 28px 0 10px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: white; font-weight: 800; }
 .score-section { margin-bottom: 28px; }
+.mobile-score-summary { display: none; }
 .scoreboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 18px; }
 .player-card { position: relative; min-height: 122px; padding: 18px; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,253,248,.78); }
 .player-card.current { border: 2px solid var(--coral); background: white; box-shadow: 0 8px 22px rgba(232,88,62,.12); }
@@ -106,7 +108,7 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; letter-spacing: -.0
 .opponent-hand { min-width: 0; padding: 11px; border-radius: 13px; color: white; background: var(--felt); }
 .opponent-hand strong { display: block; margin-bottom: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .card-backs { display: flex; min-height: 45px; padding-left: 8px; }
-.card-back { width: 32px; height: 45px; margin-left: -8px; border: 2px solid #f5e8ce; border-radius: 6px; background: repeating-linear-gradient(45deg, #cf4934 0 3px, #f5d6c8 3px 6px); box-shadow: 1px 1px 0 rgba(0,0,0,.3); }
+.card-backs .face-down { flex: 0 0 32px; width: 32px; height: 45px; margin-left: -8px; border: 2px solid #f5e8ce; border-radius: 6px; background: repeating-linear-gradient(45deg, #cf4934 0 3px, #f5d6c8 3px 6px); box-shadow: 1px 1px 0 rgba(0,0,0,.3); }
 
 .reveal-panel { margin: 20px 0; padding: 18px; border: 2px solid var(--gold); border-radius: 16px; background: #fff9e7; }
 .revealed-hands, .summary-hands { display: grid; gap: 12px; margin-top: 14px; }
@@ -157,6 +159,11 @@ button.playing-card.illegal { opacity: .4; }
 .open-card-choice { display: grid; grid-column: 1 / -1; justify-items: center; gap: 12px; }
 .open-card-choice .action-copy { text-align: center; }
 .open-card-choice .offered-card { width: 76px; }
+.final-trick-confirm { display: grid; grid-column: 1 / -1; gap: 9px; padding: 20px; border: 2px solid var(--gold); border-radius: 16px; background: #fff9e7; text-align: center; }
+.final-trick-confirm h3, .final-trick-confirm p { margin: 0; }
+.final-trick-confirm h3 { font-size: 24px; }
+.final-trick-confirm p { color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.final-trick-confirm .button { margin-top: 5px; }
 .message { min-height: 22px; margin: 15px 0 0; color: var(--coral-dark); font-weight: 750; text-align: center; }
 .round-summary { margin-top: 24px; padding: 24px; border-radius: 17px; background: var(--sage); }
 .round-summary h3 { font-size: 28px; }
@@ -218,10 +225,30 @@ footer { padding: 25px; border-top: 1px solid rgba(23,60,53,.12); color: var(--i
   .setup-copy h1 { font-size: clamp(66px, 20vw, 92px); }
   .setup-copy > p:last-child { font-size: 15px; }
   .setup-card, .table-card { border-radius: 17px; }
+  .setup-actions { flex-direction: column-reverse; }
+  .setup-actions .button { width: 100%; }
+  .roster-hint { margin-left: 0; }
   .game-toolbar { align-items: stretch; flex-direction: column; gap: 10px; margin-top: -5px; }
   .speed-controls { justify-content: space-between; }
-  .scoreboard { display: flex; margin-right: -11px; padding-right: 11px; overflow-x: auto; scroll-snap-type: x mandatory; }
-  .player-card { flex: 0 0 145px; scroll-snap-align: start; }
+  .score-section { position: sticky; top: 0; z-index: 20; margin: 0 -11px 14px; padding: 6px 11px 8px; border-bottom: 1px solid rgba(23,60,53,.16); background: rgba(247,241,230,.96); box-shadow: 0 7px 18px rgba(23,60,53,.11); backdrop-filter: blur(12px); }
+  .score-section > .section-heading { display: none; }
+  .mobile-score-summary { display: block; }
+  .mobile-score-heading { display: flex; align-items: center; justify-content: space-between; min-height: 38px; margin-bottom: 7px; gap: 10px; }
+  .mobile-score-heading > span { display: flex; align-items: baseline; min-width: 0; gap: 8px; }
+  .mobile-score-heading strong { color: var(--coral-dark); font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; }
+  .mobile-score-heading small { overflow: hidden; color: var(--ink-soft); font-size: 10px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+  .scoreboard-toggle { min-width: 69px; min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink); background: white; font-size: 10px; font-weight: 850; }
+  .score-ribbon { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+  .score-chip { position: relative; display: flex; grid-column: span 2; align-items: baseline; justify-content: space-between; min-width: 0; min-height: 39px; padding: 7px 17px 7px 8px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-soft); background: rgba(255,253,248,.86); }
+  .score-chip.current { border: 2px solid var(--coral); padding: 6px 16px 6px 7px; color: var(--ink); background: white; box-shadow: 0 3px 0 rgba(183,53,34,.2); }
+  .score-chip-name { min-width: 0; overflow: hidden; font-size: 10px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+  .score-chip strong { flex: 0 0 auto; margin-left: 4px; font-family: Georgia, serif; font-size: 15px; line-height: 1; }
+  .score-chip-state { position: absolute; top: 4px; right: 5px; color: var(--ink); font-size: 8px; font-weight: 900; }
+  .score-count-2 .score-chip, .score-count-4 .score-chip { grid-column: span 3; }
+  .scoreboard { display: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; max-height: 52dvh; margin-top: 8px; padding: 8px; overflow-y: auto; border: 1px solid var(--line); border-radius: 13px; background: var(--paper); }
+  .score-section.details-open .scoreboard { display: grid; }
+  .player-card { min-height: 88px; padding: 11px; border-radius: 12px; }
+  .player-card .score { margin: 5px 0 4px; font-size: 24px; }
   .game-grid { gap: 14px; }
   .turn-heading h2 { font-size: 34px; }
   .opponents { grid-template-columns: 1fr; }

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   canDeclareChicago,
   canLowRedeal,
+  confirmFinalTrick,
   createGame,
   decideChicago,
   decideLowRedeal,
@@ -125,6 +126,10 @@ test("successful Chicago sweep wins immediately regardless of score", () => {
     playCard(state, 0);
     playCard(state, 0);
   }
+  assert.equal(state.phase, "final_trick");
+  assert.equal(state.currentTrick.length, 2);
+  assert.equal(state.winner, null);
+  confirmFinalTrick(state);
   assert.equal(state.phase, "game_over");
   assert.equal(state.winner, 0);
   assert.equal(state.winReason, "chicago");
@@ -148,6 +153,8 @@ test("losing any trick fails Chicago, resets score, and play continues", () => {
     const ledSuit = state.currentTrick[0]?.card.suit || null;
     playCard(state, legalCardIndexes(state.players[state.actor].hand, ledSuit)[0]);
   }
+  assert.equal(state.phase, "final_trick");
+  confirmFinalTrick(state);
   assert.ok(state.players[0].score >= 1, "final poker points can be added after the reset");
 });
 
@@ -163,11 +170,16 @@ test("the first four tricks score zero and the fifth scores five", () => {
       playCard(state, legalCardIndexes(state.players[state.actor].hand, ledSuit)[0]);
     }
     const total = state.players.reduce((sum, player) => sum + player.score, 0);
-    assert.equal(total, trick < 5 ? 0 : 5);
+    assert.equal(total, 0, "fifth-trick scoring waits for confirmation");
     if (trick < 5) {
       assert.equal(state.actor, state.trickHistory.at(-1).winner, "trick winner leads next");
+    } else {
+      assert.equal(state.phase, "final_trick");
+      assert.equal(state.currentTrick.length, 2, "the fifth trick remains visible");
+      confirmFinalTrick(state);
     }
   }
+  assert.equal(state.players.reduce((sum, player) => sum + player.score, 0), 5);
   assert.equal(state.phase, "round_summary");
   assert.deepEqual(
     state.roundSummary.hands.map((hand) => hand.length),
@@ -206,6 +218,7 @@ test("52 without fifth trick does not win; fifth-trick award can produce victory
       playCard(state, legalCardIndexes(state.players[state.actor].hand, ledSuit)[0]);
     }
   }
+  confirmFinalTrick(state);
   assert.equal(state.winner, 1);
   assert.equal(state.players[1].score, 52);
   assert.equal(state.players[0].score, 52);
@@ -222,6 +235,8 @@ test("final poker reaches 52 only for the player who also won the fifth trick", 
   winning.chicago = { declarer: null, active: false, failed: false, stoppedBy: null };
   playCard(winning, 0);
   playCard(winning, 0);
+  assert.equal(winning.phase, "final_trick");
+  confirmFinalTrick(winning);
   assert.equal(winning.players[0].score, 52);
   assert.equal(winning.winner, 0);
 
@@ -236,6 +251,8 @@ test("final poker reaches 52 only for the player who also won the fifth trick", 
   continuing.chicago = { declarer: null, active: false, failed: false, stoppedBy: null };
   playCard(continuing, 0);
   playCard(continuing, 0);
+  assert.equal(continuing.phase, "final_trick");
+  confirmFinalTrick(continuing);
   assert.equal(continuing.players[0].score, 52);
   assert.equal(continuing.phase, "round_summary");
   assert.equal(continuing.winner, null);
@@ -254,4 +271,14 @@ test("version 2 saves migrate to the open-card state model", () => {
   const restored = restoreGame(state);
   assert.equal(restored.version, SAVE_VERSION);
   assert.equal(restored.openCardOffer, null);
+  assert.equal(restored.pendingFifthWinner, null);
+});
+
+test("version 3 saves migrate to the final-trick review state model", () => {
+  const state = twoPlayerGame();
+  delete state.pendingFifthWinner;
+  state.version = 3;
+  const restored = restoreGame(state);
+  assert.equal(restored.version, SAVE_VERSION);
+  assert.equal(restored.pendingFifthWinner, null);
 });

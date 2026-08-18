@@ -13,7 +13,7 @@ A dependency-free browser implementation of the Swedish card game Chicago, deplo
 - `styles.css` — responsive styling aligned with the neighboring 10000 game.
 - `tests/` — Node tests for poker, rules, game flow, CPU play, and asset versioning.
 
-The current game is stored under `chicago-game-v3`; version 2 saves migrate automatically. CPU speed is stored separately. No data is sent to a server.
+The current game is stored under `chicago-game-v4`; version 2 and 3 saves migrate automatically. The editable family lineup is remembered under `chicago-lineup-v1`, and CPU speed is stored separately. No data is sent to a server.
 
 ## Deterministic interpretations
 
@@ -22,9 +22,12 @@ The current game is stored under `chicago-game-v3`; version 2 saves migrate auto
 - Chicago is offered as one of the acting player's choices in the first exchange. An accepted call completes that player's first-exchange action without changing cards; otherwise the player may stand pat or exchange cards.
 - During exchanges, the human selects cards to keep. When exactly one card is exchanged, the replacement is offered face-up; rejecting it discards that card and deals the next card face-down.
 - Once the fifth trick is complete, every preserved five-card hand and a chronological recap of all five tricks are revealed in the round summary before the next round can begin. The trick recap starts collapsed on mobile.
+- After the fifth trick, play pauses with that trick still visible. The player confirms before final scoring and the complete round summary are shown.
 - Poker comparisons are presented as trust-based spoken calls such as `Ett par, lågt` rather than by exposing full hands. The engine still applies exact category and kicker comparisons.
 - The note requires one 52-card deck, forbids discarded cards from returning, and also permits up to five replacements in each of three exchanges. Those requirements can exhaust the stock in an extreme four-player round. The game never reuses discards: once the stock is low, the UI requires the player to keep enough cards for the remaining stock, and the engine rejects oversized exchanges. Passing remains available in all three phases.
 - CPU players use only their own hand and public trick/declaration state. They do not receive other hands or the undealt deck in decision inputs.
+- On mobile, all player scores remain visible in a compact sticky ribbon. A Details control expands the full player cards; desktop keeps the complete scoreboard.
+- New setups use the editable family roster Erik, Hanna, Esther, Ingrid, Jon, Johanna, Bill, and Olle. Chicago keeps exactly one human player and remembers 2–4 chosen names on the device.
 
 ## Test
 
