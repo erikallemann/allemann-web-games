@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-08-21
+
+- Skip the low-hand redeal prompt for players who have a ten or higher.
+- Show poker calls and award poker points after the second exchange.
+
 ## 2026-08-18
 
 - Add the remembered, editable family roster from 10000 to Chicago's setup while retaining one human and up to three CPU opponents.

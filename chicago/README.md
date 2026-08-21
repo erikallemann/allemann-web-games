@@ -24,6 +24,8 @@ The current game is stored under `chicago-game-v4`; version 2 and 3 saves migrat
 - Once the fifth trick is complete, every preserved five-card hand and a chronological recap of all five tricks are revealed in the round summary before the next round can begin. The trick recap starts collapsed on mobile.
 - After the fifth trick, play pauses with that trick still visible. The player confirms before final scoring and the complete round summary are shown.
 - Poker comparisons are presented as trust-based spoken calls such as `Ett par, lågt` rather than by exposing full hands. The engine still applies exact category and kicker comparisons.
+- Poker hands are called and scored after both the first and second exchanges. Final poker scoring uses the hands preserved before trick play.
+- The optional low-hand redeal phase only stops for players whose five cards are all below ten; ineligible players advance automatically.
 - The note requires one 52-card deck, forbids discarded cards from returning, and also permits up to five replacements in each of three exchanges. Those requirements can exhaust the stock in an extreme four-player round. The game never reuses discards: once the stock is low, the UI requires the player to keep enough cards for the remaining stock, and the engine rejects oversized exchanges. Passing remains available in all three phases.
 - CPU players use only their own hand and public trick/declaration state. They do not receive other hands or the undealt deck in decision inputs.
 - On mobile, all player scores remain visible in a compact sticky ribbon. A Details control expands the full player cards; desktop keeps the complete scoreboard.

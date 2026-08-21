@@ -1,4 +1,4 @@
-import { cardLabel, RANK_LABELS, SUIT_SYMBOLS } from "./cards.js?v=20260818-4";
+import { cardLabel, RANK_LABELS, SUIT_SYMBOLS } from "./cards.js?v=20260821-1";
 import {
   canDeclareChicago,
   canLowRedeal,
@@ -12,22 +12,22 @@ import {
   playCard,
   restartGame,
   restoreGame,
-} from "./game.js?v=20260818-4";
-import { legalCardIndexes } from "./rules.js?v=20260818-4";
-import { describePokerHand } from "./poker.js?v=20260818-4";
+} from "./game.js?v=20260821-1";
+import { legalCardIndexes } from "./rules.js?v=20260821-1";
+import { describePokerHand } from "./poker.js?v=20260821-1";
 import {
   cpuAcceptLowRedeal,
   cpuChooseCard,
   cpuDeclareChicago,
   cpuExchangeIndexes,
-} from "./cpu.js?v=20260818-4";
+} from "./cpu.js?v=20260821-1";
 import {
   FAMILY_ROSTER,
   LINEUP_KEY,
   nextRosterPlayer,
   normalizeLineup,
   restoreLineup,
-} from "./setup.js?v=20260818-4";
+} from "./setup.js?v=20260821-1";
 
 const SAVE_KEY = "chicago-game-v4";
 const LEGACY_SAVE_KEYS = ["chicago-game-v3", "chicago-game-v2"];
@@ -431,16 +431,11 @@ function renderActions() {
   }
 
   if (state.phase === "low_redeal") {
-    if (canLowRedeal(state)) {
-      panel.append(make("p", "action-copy", "Alla dina kort är 9 eller lägre. Du får frivilligt byta hela handen en gång."));
-      panel.append(
-        actionButton("Byt alla fem", "button-primary", () => perform(() => decideLowRedeal(state, true))),
-        actionButton("Behåll handen", "button-secondary", () => perform(() => decideLowRedeal(state, false))),
-      );
-    } else {
-      panel.append(make("p", "action-copy", "Låg omgiv är inte tillgänglig eftersom minst ett kort är 10 eller högre."));
-      panel.append(actionButton("Fortsätt", "button-primary wide", () => perform(() => decideLowRedeal(state, false))));
-    }
+    panel.append(make("p", "action-copy", "Alla dina kort är 9 eller lägre. Du får frivilligt byta hela handen en gång."));
+    panel.append(
+      actionButton("Byt alla fem", "button-primary", () => perform(() => decideLowRedeal(state, true))),
+      actionButton("Behåll handen", "button-secondary", () => perform(() => decideLowRedeal(state, false))),
+    );
   } else if (state.phase.startsWith("exchange")) {
     if (state.openCardOffer) {
       const offer = make("div", "open-card-choice");

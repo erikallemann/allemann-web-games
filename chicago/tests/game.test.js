@@ -49,6 +49,21 @@ test("a player can decline an eligible low redeal", () => {
   assert.deepEqual(state.players[0].hand.map((card) => card.id), original);
 });
 
+test("players without five cards below ten skip the low-redeal prompt", () => {
+  const state = twoPlayerGame();
+  state.phase = "low_redeal";
+  state.actor = 0;
+  state.actionOrder = [0, 1];
+  state.actionPosition = 0;
+  state.players[0].hand = cards("9s 8d 7h 6c 2s");
+  state.players[1].hand = cards("Ts 8h 7d 6s 2c");
+
+  decideLowRedeal(state, false);
+
+  assert.equal(state.phase, "exchange_1");
+  assert.equal(state.actor, state.actionOrder[0]);
+});
+
 test("Chicago is a first-exchange choice that skips the declarer's exchange", () => {
   const state = twoPlayerGame();
   state.phase = "exchange_1";
@@ -113,6 +128,26 @@ test("first poker scoring publishes spoken calls without publishing hands", () =
   assert.equal(state.lastPokerResult.calls.length, 2);
   assert.equal("hands" in state.lastPokerResult, false);
   assert.ok(state.lastPokerResult.calls.every((call) => typeof call.text === "string"));
+});
+
+test("second exchange publishes fresh calls and awards poker points", () => {
+  const state = twoPlayerGame();
+  state.phase = "exchange_2";
+  state.actor = 0;
+  state.actionOrder = [0, 1];
+  state.actionPosition = 0;
+  state.players[0].hand = cards("Ks Kd Qh Jc 9s");
+  state.players[1].hand = cards("As Qd Jh 8c 7s");
+
+  exchangeCards(state, []);
+  exchangeCards(state, []);
+
+  assert.equal(state.phase, "exchange_3");
+  assert.equal(state.lastPokerResult.moment, "andra");
+  assert.equal(state.lastPokerResult.calls.length, 2);
+  assert.equal(state.players[0].score, 1);
+  assert.equal(state.events.some((event) =>
+    event.type === "score" && event.message.includes("får 1 poäng")), true);
 });
 
 test("successful Chicago sweep wins immediately regardless of score", () => {

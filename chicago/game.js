@@ -1,12 +1,12 @@
-import { createDeck, shuffle, sortHand, cardLabel } from "./cards.js?v=20260818-4";
-import { comparePokerHands, describePokerCall, describePokerHand } from "./poker.js?v=20260818-4";
+import { createDeck, shuffle, sortHand, cardLabel } from "./cards.js?v=20260821-1";
+import { comparePokerHands, describePokerCall, describePokerHand } from "./poker.js?v=20260821-1";
 import {
   chicagoEligible,
   lowRedealEligible,
   normalWinner,
   trickWinner,
   validateCardPlay,
-} from "./rules.js?v=20260818-4";
+} from "./rules.js?v=20260821-1";
 
 export const SAVE_VERSION = 4;
 export const TARGET_SCORE = 52;
@@ -46,6 +46,13 @@ function beginDecisionPhase(state, phase) {
   state.actionOrder = clockwiseOrder(state.dealer, state.players.length);
   state.actionPosition = 0;
   state.actor = state.actionOrder[0];
+}
+
+function skipIneligibleLowRedeals(state) {
+  while (state.phase === "low_redeal" &&
+    (!lowRedealEligible(state.players[state.actor]?.hand) || state.deck.length < 5)) {
+    advanceDecision(state, () => beginDecisionPhase(state, "exchange_1"));
+  }
 }
 
 function advanceDecision(state, onComplete) {
@@ -136,7 +143,8 @@ function completeExchangePhase(state) {
     scorePoker(state, "första");
     if (state.phase !== "game_over") beginDecisionPhase(state, "exchange_2");
   } else if (state.phase === "exchange_2") {
-    beginDecisionPhase(state, "exchange_3");
+    scorePoker(state, "andra");
+    if (state.phase !== "game_over") beginDecisionPhase(state, "exchange_3");
   } else {
     beginTricks(state);
   }
@@ -196,6 +204,7 @@ function beginRound(state, random) {
   state.currentTrick = [];
   state.trickHistory = [];
   beginDecisionPhase(state, "low_redeal");
+  skipIneligibleLowRedeals(state);
   addEvent(
     state,
     `Omgång ${state.round}: ${state.players[state.dealer].name} är givare.`,
@@ -266,6 +275,7 @@ export function decideLowRedeal(state, accept) {
     addEvent(state, `${player.name} behåller sin låga hand.`, "exchange");
   }
   advanceDecision(state, () => beginDecisionPhase(state, "exchange_1"));
+  skipIneligibleLowRedeals(state);
 }
 
 export function canDeclareChicago(state, playerIndex = state.actor) {
@@ -460,12 +470,13 @@ export function restoreGame(value) {
       (player.preservedHand || []).map((card) => ({ ...card }))),
     tricks: value.roundSummary.tricks || value.trickHistory || [],
   } : value.roundSummary;
-  if (value.version === SAVE_VERSION && !needsSummaryMigration) return value;
-  return {
+  const restored = value.version === SAVE_VERSION && !needsSummaryMigration ? value : {
     ...value,
     version: SAVE_VERSION,
     openCardOffer: value.openCardOffer || null,
     pendingFifthWinner: Number.isInteger(value.pendingFifthWinner) ? value.pendingFifthWinner : null,
     roundSummary,
   };
+  skipIneligibleLowRedeals(restored);
+  return restored;
 }
